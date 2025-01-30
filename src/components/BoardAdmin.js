@@ -7,6 +7,7 @@ const BoardAdmin = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [modalMessage, setModalMessage] = useState(null); // Сообщение для модального окна
+  const [savedData, setSavedData] = useState([]);
 
   // Функция загрузки списка машин
   const fetchCarList = async () => {
@@ -100,13 +101,19 @@ const BoardAdmin = () => {
     e.preventDefault();
     setLoading(true);
     setResponseMessage(null);
+    setSavedData([]); // Очищаем таблицу перед новым запросом
 
     try {
       const tokenData = JSON.parse(localStorage.getItem("user"));
       const token = tokenData?.token;
 
-      // Запрос на парсинг данных
-      const parseResponse = await axios.get("http://localhost:8080/api/cars/data-car-date", {
+      // Определяем URL запроса
+      const url = formData.saveToDb
+          ? "http://localhost:8080/api/cars/save-car-data"
+          : "http://localhost:8080/api/cars/data-car-date";
+
+      // Отправляем GET-запрос на нужный URL
+      const response = await axios.get(url, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -118,18 +125,11 @@ const BoardAdmin = () => {
           countPages: formData.countPages,
         },
       });
+      console.log(response.data);
+      // Сохраняем данные для отображения таблицы
+      setSavedData(response.data);
 
-      // Проверка, нужно ли сохранять данные в БД
       if (formData.saveToDb) {
-        await axios.post(
-            "http://localhost:8080/api/cars/save-to-db",
-            parseResponse.data,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-        );
         setResponseMessage("Данные успешно собраны и сохранены в базу данных.");
       } else {
         setResponseMessage("Данные успешно собраны.");
@@ -140,6 +140,8 @@ const BoardAdmin = () => {
       setLoading(false);
     }
   };
+
+
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
@@ -336,20 +338,64 @@ const BoardAdmin = () => {
                   <button type="submit" className="btn btn-primary mt-3">
                     Собрать данные
                   </button>
+
+                  {/* Показ индикатора загрузки */}
+                  {loading && (
+                      <div className="text-center mt-3">
+                        <div className="spinner-border text-primary" role="status">
+                          <span className="sr-only">Загрузка...</span>
+                        </div>
+                      </div>
+                  )}
+
+                  {/* Показ сообщения об успехе или ошибке */}
+                  {responseMessage && (
+                      <div className="alert alert-info mt-3" role="alert">
+                        {responseMessage}
+                      </div>
+                  )}
                 </form>
 
-                {/* Индикатор загрузки */}
-                {loading && (
-                    <div className="text-center mt-3">
-                      <div className="spinner-border text-primary" role="status">
-                        <span className="sr-only">Загрузка...</span>
-                      </div>
-                    </div>
-                )}
-
-                {responseMessage && (
-                    <div className="alert alert-info mt-3" role="alert">
-                      {responseMessage}
+                {/* Итоговая таблица с отображением данных */}
+                {savedData.length > 0 && (
+                    <div className="mt-5">
+                      <h3>Итоговая сохраненная таблица в БД</h3>
+                      <table className="table table-bordered table-striped">
+                        <thead>
+                        <tr>
+                          <th>Название</th>
+                          <th>Год</th>
+                          <th>Цена</th>
+                          <th>Пробег</th>
+                          <th>Объем двигателя</th>
+                          <th>Топливо</th>
+                          <th>Кузов</th>
+                          <th>Трансмиссия</th>
+                          <th>Ссылка</th>
+                          <th>Описание</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {savedData.map((car, index) => (
+                            <tr key={index}>
+                              <td>{car.Title}</td>
+                              <td>{car.Year}</td>
+                              <td>{car.Price}</td>
+                              <td>{car.Mileage}</td>
+                              <td>{car.EngineVolume} л</td>
+                              <td>{car.Fuel}</td>
+                              <td>{car.ConditionBody}</td>
+                              <td>{car.Transmission}</td>
+                              <td>
+                                <a href={car.Link} target="_blank" rel="noopener noreferrer">
+                                  Перейти
+                                </a>
+                              </td>
+                              <td>{car.RawDescription}</td>
+                            </tr>
+                        ))}
+                        </tbody>
+                      </table>
                     </div>
                 )}
               </div>

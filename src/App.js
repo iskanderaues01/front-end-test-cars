@@ -79,28 +79,43 @@ const App = () => {
               Главная
             </Link>
           </li>
+          <li className="nav-item">
+            <Link to={"/about"} className="nav-link">
+              О нас
+            </Link>
+          </li>
+          <li className="nav-item">
+            <Link to={"/contact"} className="nav-link">
+              Связаться
+            </Link>
+          </li>
+          <li className="nav-item">
+            <Link to={"/contact"} className="nav-link">
+              Связаться
+            </Link>
+          </li>
 
           {showModeratorBoard && (
-            <li className="nav-item">
-              <Link to={"/mod"} className="nav-link">
-                Панель модератора
-              </Link>
-            </li>
+              <li className="nav-item">
+                <Link to={"/mod"} className="nav-link">
+                  Панель модератора
+                </Link>
+              </li>
           )}
 
           {showAdminBoard && (
-            <li className="nav-item">
-              <Link to={"/admin"} className="nav-link">
-                Панель администратора
-              </Link>
-            </li>
+              <li className="nav-item">
+                <Link to={"/admin"} className="nav-link">
+                  Панель администратора
+                </Link>
+              </li>
           )}
         </div>
 
         {currentUser ? (
-          <div className="navbar-nav ml-auto">
-            <li className="nav-item">
-              <Link to={"/profile"} className="nav-link">
+            <div className="navbar-nav ml-auto">
+              <li className="nav-item">
+                <Link to={"/profile"} className="nav-link">
                 {currentUser.email}
               </Link>
             </li>
