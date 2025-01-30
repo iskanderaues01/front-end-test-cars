@@ -9,6 +9,34 @@ const BoardAdmin = () => {
   const [modalMessage, setModalMessage] = useState(null); // Сообщение для модального окна
   const [savedData, setSavedData] = useState([]);
 
+  const [expandedFile, setExpandedFile] = useState(null);
+  const [fileDetails, setFileDetails] = useState([]);
+
+
+  const fetchFileDetails = async (fileName) => {
+    // При повторном нажатии на ту же кнопку скрываем блок
+    setExpandedFile(fileName === expandedFile ? null : fileName);
+    if (fileName !== expandedFile) {
+      try {
+        const tokenData = JSON.parse(localStorage.getItem("user"));
+        const token = tokenData?.token;
+        const response = await axios.get(
+            `http://localhost:8080/api/cars/get-file/${fileName}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+        );
+        setFileDetails(response.data);
+      } catch (err) {
+        setModalMessage(
+            `Ошибка при получении данных файла "${fileName}": ${err.message}`
+        );
+      }
+    }
+  };
+
   // Функция загрузки списка машин
   const fetchCarList = async () => {
     setLoading(true);
@@ -16,11 +44,14 @@ const BoardAdmin = () => {
     try {
       const tokenData = JSON.parse(localStorage.getItem("user"));
       const token = tokenData?.token;
-      const response = await axios.get("http://localhost:8080/api/cars/list-parser", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await axios.get(
+          "http://localhost:8080/api/cars/list-parser",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+      );
       setCarList(response.data);
     } catch (err) {
       setError("Ошибка при загрузке списка машин.");
@@ -31,20 +62,27 @@ const BoardAdmin = () => {
 
   // Функция удаления файла
   const handleDelete = async (fileName) => {
-    const confirmDelete = window.confirm(`Вы уверены, что хотите удалить файл "${fileName}"?`);
+    const confirmDelete = window.confirm(
+        `Вы уверены, что хотите удалить файл "${fileName}"?`
+    );
     if (confirmDelete) {
       try {
         const tokenData = JSON.parse(localStorage.getItem("user"));
         const token = tokenData?.token;
-        const response = await axios.delete(`http://localhost:8080/api/cars/delete-file/${fileName}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const response = await axios.delete(
+            `http://localhost:8080/api/cars/delete-file/${fileName}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+        );
         setModalMessage(`Файл "${fileName}" успешно удалён.`);
         fetchCarList(); // Обновление списка после удаления
       } catch (err) {
-        setModalMessage(`Ошибка при удалении файла "${fileName}": ${err.message}`);
+        setModalMessage(
+            `Ошибка при удалении файла "${fileName}": ${err.message}`
+        );
       }
     }
   };
@@ -88,7 +126,7 @@ const BoardAdmin = () => {
 
   const [responseMessage, setResponseMessage] = useState(null);
 
-// Обработчик изменения полей формы
+  // Обработчик изменения полей формы
   const handleChange = (field, value) => {
     setFormData((prevData) => ({
       ...prevData,
@@ -96,7 +134,7 @@ const BoardAdmin = () => {
     }));
   };
 
-// Обработчик отправки формы
+  // Обработчик отправки формы
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -125,8 +163,7 @@ const BoardAdmin = () => {
           countPages: formData.countPages,
         },
       });
-      console.log(response.data);
-      // Сохраняем данные для отображения таблицы
+
       setSavedData(response.data);
 
       if (formData.saveToDb) {
@@ -140,8 +177,6 @@ const BoardAdmin = () => {
       setLoading(false);
     }
   };
-
-
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
@@ -177,7 +212,6 @@ const BoardAdmin = () => {
             >
               <span className="nav-link curs-pointer">Добавить данные о машинах</span>
             </li>
-
           </ul>
         </div>
 
@@ -204,25 +238,90 @@ const BoardAdmin = () => {
                       </thead>
                       <tbody>
                       {carList.map((file, index) => (
-                          <tr key={index}>
-                            <td>{file.fileName}</td>
-                            <td>{new Date(file.creationDate).toLocaleString()}</td>
-                            <td>{file.fileSize}</td>
-                            <td>
-                              <button
-                                  className="btn btn-danger btn-sm marg-r-20"
-                                  onClick={() => handleDelete(file.fileName)}
-                              >
-                                Удалить
-                              </button>
-                              <button
-                                  className="btn btn-primary btn-sm"
-                                  onClick={() => handleDownload(file.fileName)}
-                              >
-                                Скачать
-                              </button>
-                            </td>
-                          </tr>
+                          // Используем React.Fragment, чтобы можно было отрендерить
+                          // дополнительную строку под каждой записью
+                          <React.Fragment key={index}>
+                            <tr>
+                              <td>{file.fileName}</td>
+                              <td>{new Date(file.creationDate).toLocaleString()}</td>
+                              <td>{file.fileSize}</td>
+                              <td>
+                                <button
+                                    className="btn btn-danger btn-sm marg-r-20"
+                                    onClick={() => handleDelete(file.fileName)}
+                                >
+                                  Удалить
+                                </button>
+                                <button
+                                    className="btn btn-primary btn-sm marg-r-20"
+                                    onClick={() => handleDownload(file.fileName)}
+                                >
+                                  Скачать
+                                </button>
+                                <button
+                                    className="btn btn-info btn-sm"
+                                    onClick={() => fetchFileDetails(file.fileName)}
+                                >
+                                  Подробнее
+                                </button>
+                              </td>
+                            </tr>
+
+                            {/* Если файл "развёрнут", показываем доп. строку со сведениями */}
+                            {expandedFile === file.fileName && (
+                                <tr>
+                                  {/* colSpan равен количеству столбцов в основной строке */}
+                                  <td colSpan="4">
+                                    {/* Можно показать "Загрузка..." или проверять fileDetails.length == 0.
+                                В данном случае, если fileDetails пуст или не пришёл, можно вывести сообщение. */}
+                                    {fileDetails && fileDetails.length > 0 ? (
+                                        <table className="table table-bordered mt-3">
+                                          <thead>
+                                          <tr>
+                                            <th>Название</th>
+                                            <th>Год</th>
+                                            <th>Цена</th>
+                                            <th>Пробег</th>
+                                            <th>Объем двигателя</th>
+                                            <th>Топливо</th>
+                                            <th>Кузов</th>
+                                            <th>Трансмиссия</th>
+                                            <th>Ссылка</th>
+                                            <th>Описание</th>
+                                          </tr>
+                                          </thead>
+                                          <tbody>
+                                          {fileDetails.map((car, idx) => (
+                                              <tr key={idx}>
+                                                <td>{car.Title}</td>
+                                                <td>{car.Year}</td>
+                                                <td>{car.Price}</td>
+                                                <td>{car.Mileage}</td>
+                                                <td>{car.EngineVolume}</td>
+                                                <td>{car.Fuel}</td>
+                                                <td>{car.ConditionBody}</td>
+                                                <td>{car.Transmission}</td>
+                                                <td>
+                                                  <a
+                                                      href={car.Link}
+                                                      target="_blank"
+                                                      rel="noopener noreferrer"
+                                                  >
+                                                    Перейти
+                                                  </a>
+                                                </td>
+                                                <td>{car.RawDescription}</td>
+                                              </tr>
+                                          ))}
+                                          </tbody>
+                                        </table>
+                                    ) : (
+                                        <p>Нет данных для отображения.</p>
+                                    )}
+                                  </td>
+                                </tr>
+                            )}
+                          </React.Fragment>
                       ))}
                       </tbody>
                     </table>
@@ -263,6 +362,9 @@ const BoardAdmin = () => {
           {activeTab === "add-cars" && (
               <div>
                 <h1>Загрузите новые данные об автомобилях</h1>
+                <a href="https://kolesa.kz/" className="text-decoration-none">
+                  Данные берутся с сайта kolesa.kz
+                </a>
                 <form onSubmit={handleSubmit}>
                   <div className="form-group">
                     <label htmlFor="carBrand">Марка автомобиля</label>
@@ -332,7 +434,7 @@ const BoardAdmin = () => {
                         onChange={(e) => handleChange("saveToDb", e.target.checked)}
                     />
                     <label className="form-check-label" htmlFor="saveToDb">
-                      Сохранить в БД
+                      Сохранить в Базу Данных
                     </label>
                   </div>
                   <button type="submit" className="btn btn-primary mt-3">
@@ -406,5 +508,3 @@ const BoardAdmin = () => {
 };
 
 export default BoardAdmin;
-
-
