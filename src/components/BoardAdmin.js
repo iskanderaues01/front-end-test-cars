@@ -374,7 +374,7 @@ const BoardAdmin = () => {
                         id="carBrand"
                         value={formData.carBrand}
                         onChange={(e) => handleChange("carBrand", e.target.value)}
-                        placeholder="Введите марку автомобиля"
+                        placeholder="Введите марку автомобиля, например Toyota"
                     />
                   </div>
                   <div className="form-group">
@@ -385,7 +385,7 @@ const BoardAdmin = () => {
                         id="carModel"
                         value={formData.carModel}
                         onChange={(e) => handleChange("carModel", e.target.value)}
-                        placeholder="Введите модель автомобиля"
+                        placeholder="Введите модель автомобиля, например Сamry"
                     />
                   </div>
                   <div className="form-group">
@@ -396,8 +396,8 @@ const BoardAdmin = () => {
                         id="dateStart"
                         value={formData.dateStart}
                         onChange={(e) => handleChange("dateStart", e.target.value)}
-                        placeholder="Введите начальный год"
-                        min="1900"
+                        placeholder="Введите начальный год, например 2001"
+                        min="1950"
                         max={new Date().getFullYear()}
                     />
                   </div>
@@ -409,8 +409,8 @@ const BoardAdmin = () => {
                         id="dateMax"
                         value={formData.dateMax}
                         onChange={(e) => handleChange("dateMax", e.target.value)}
-                        placeholder="Введите конечный год"
-                        min="1900"
+                        placeholder="Введите конечный год, например 2025"
+                        min="1950"
                         max={new Date().getFullYear()}
                     />
                   </div>
@@ -422,7 +422,7 @@ const BoardAdmin = () => {
                         id="countPages"
                         value={formData.countPages}
                         onChange={(e) => handleChange("countPages", e.target.value)}
-                        placeholder="Введите количество страниц"
+                        placeholder="Введите количество страниц, например 7"
                     />
                   </div>
                   <div className="form-check">

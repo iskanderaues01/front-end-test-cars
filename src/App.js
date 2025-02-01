@@ -28,7 +28,7 @@ const App = () => {
 
   let location = useLocation();
 
-  const noContainerPaths = ["/mod", "/admin"];
+  const noContainerPaths = ["/mod", "/admin", "/statistic"];
 
   const isNoContainerPath = noContainerPaths.includes(location.pathname);
 
@@ -148,6 +148,7 @@ const App = () => {
                 <Routes>
                   <Route path="/mod" element={<BoardModerator/>}/>
                   <Route path="/admin" element={<BoardAdmin/>}/>
+                  <Route path="/statistic" element={<Statistic />} />
                 </Routes>
               </div>
           ) : (
@@ -159,7 +160,6 @@ const App = () => {
                   <Route path="/register" element={<Register/>}/>
                   <Route path="/profile" element={<Profile/>}/>
                   <Route path="/user" element={<BoardUser/>}/>
-                  <Route path="/statistic" element={<Statistic/>}/>
                 </Routes>
               </div>
           )}
