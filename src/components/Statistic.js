@@ -1,336 +1,417 @@
-import React, {useEffect, useState} from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 
 const Statistic = () => {
-    const [activeTab, setActiveTab] = useState("tab1");
+    // ------------------------------------------------------
+    // 1. Управление вкладками (меню слева)
+    // ------------------------------------------------------
+    const [activeTab, setActiveTab] = useState("home");
 
     const handleTabChange = (tab) => {
         setActiveTab(tab);
+        // Если при переключении на вкладку "cars" вам нужно заново грузить список — зовите fetchData() здесь
+        if (tab === "cars") {
+            fetchData(); // Например, перезагрузить сразу
+        }
     };
 
-    // Исходные данные с сервера после парсинга
+    // ------------------------------------------------------
+    // 2. Данные и фильтр (используются во вкладке "cars")
+    // ------------------------------------------------------
     const [files, setFiles] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
 
-    // Списки (для выпадающих меню)
+    // Для селектов
     const [brands, setBrands] = useState([]);
-    const [models, setModels] = useState([]);
+    const [allModels, setAllModels] = useState([]);
     const [minYears, setMinYears] = useState([]);
     const [maxYears, setMaxYears] = useState([]);
 
-    // Выбранные значения в селектах
+    // Выбор пользователя
     const [selectedBrand, setSelectedBrand] = useState("");
     const [selectedModel, setSelectedModel] = useState("");
     const [selectedMinYear, setSelectedMinYear] = useState("");
     const [selectedMaxYear, setSelectedMaxYear] = useState("");
 
-    // Модели, которые доступны для выбранной марки
+    // Модели, релевантные выбранной марке
     const [filteredModels, setFilteredModels] = useState([]);
 
-    // Ошибка/уведомления
-    const [error, setError] = useState(null);
+    // ------------------------------------------------------
+    // 3. "Подробнее" (accordion)
+    // ------------------------------------------------------
+    const [expandedFile, setExpandedFile] = useState(null); // какое имя файла сейчас развёрнуто
+    const [fileDetails, setFileDetails] = useState([]);     // данные, пришедшие от "Подробнее"
 
-    useEffect(() => {
-        fetchFiles();
-    }, []);
-
-    // Получаем список (JSON) с сервера
-    const fetchFiles = async () => {
+    // ------------------------------------------------------
+    // 4. Основная загрузка: парсинг fileName -> brand, model и т.д.
+    // ------------------------------------------------------
+    const fetchData = async () => {
+        setLoading(true);
+        setError(null);
         try {
             const tokenData = JSON.parse(localStorage.getItem("user"));
             const token = tokenData?.token;
 
-            const response = await axios.get(
-                "http://localhost:8080/api/cars/list-parser",
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                }
-            );
+            const response = await axios.get("http://localhost:8080/api/cars/list-parser", {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
 
-            // response.data = [{fileName, creationDate, fileSize}, ...]
-            const serverData = response.data;
-
-            // Парсим fileName вида "bmw_528_2010_2015_7.json"
-            // => brand="bmw", model="528", minYear="2010", maxYear="2015", pages="7"
-            const parsedFiles = serverData.map((item) => {
-                const nameWithoutExt = item.fileName.replace(".json", "");
-                const parts = nameWithoutExt.split("_");
-                // parts[0] = brand, parts[1] = model, parts[2] = minYear, parts[3] = maxYear, parts[4] = pages
+            // Преобразуем fileName вида: "bmw_528_2010_2015_7.json"
+            const parsedFiles = response.data.map((item) => {
+                const withoutExt = item.fileName.replace(".json", "");
+                const [brand, model, minY, maxY, pages] = withoutExt.split("_");
 
                 return {
-                    brand: parts[0],
-                    model: parts[1],
-                    minYear: parts[2],
-                    maxYear: parts[3],
-                    pages: parts[4],
                     fileName: item.fileName,
                     creationDate: item.creationDate,
                     fileSize: item.fileSize,
+                    brand,
+                    model,
+                    minYear: minY,
+                    maxYear: maxY,
+                    pages,
                 };
             });
 
-            // Заполняем стейт
             setFiles(parsedFiles);
 
-            // Собираем уникальные значения для brand, model, minYear, maxYear
-            const uniqueBrands = new Set();
-            const uniqueModels = new Set();
-            const uniqueMinYears = new Set();
-            const uniqueMaxYears = new Set();
+            // Уникальные значения
+            const brandSet = new Set();
+            const modelSet = new Set();
+            const minYearSet = new Set();
+            const maxYearSet = new Set();
 
             parsedFiles.forEach((f) => {
-                uniqueBrands.add(f.brand);
-                uniqueModels.add(f.model);
-                uniqueMinYears.add(f.minYear);
-                uniqueMaxYears.add(f.maxYear);
+                brandSet.add(f.brand);
+                modelSet.add(f.model);
+                minYearSet.add(f.minYear);
+                maxYearSet.add(f.maxYear);
             });
 
-            setBrands(Array.from(uniqueBrands));
-            setModels(Array.from(uniqueModels));
-            setMinYears(Array.from(uniqueMinYears).sort());
-            setMaxYears(Array.from(uniqueMaxYears).sort());
+            setBrands([...brandSet].sort());
+            setAllModels([...modelSet].sort());
+            setMinYears([...minYearSet].sort());
+            setMaxYears([...maxYearSet].sort());
         } catch (err) {
-            setError(`Ошибка при получении списка: ${err.message}`);
+            setError("Ошибка при загрузке данных: " + err.message);
+        } finally {
+            setLoading(false);
         }
     };
 
-    // При выборе марки — сбрасываем выбранную модель,
-    // получаем список моделей, относящихся к этой марке
+    // Если вам нужно грузить список только один раз при монтировании,
+    // раскомментируйте useEffect (по желанию):
+    /*
+    useEffect(() => {
+      fetchData();
+    }, []);
+    */
+
+    // ------------------------------------------------------
+    // 5. Обработчики для селектов (марка, модель, годы)
+    // ------------------------------------------------------
     const handleBrandChange = (e) => {
         const newBrand = e.target.value;
         setSelectedBrand(newBrand);
-        setSelectedModel(""); // сброс модели
+        setSelectedModel("");
 
-        // Фильтруем модели, привязанные только к этой марке
-        const brandModels = files
-            .filter((f) => f.brand === newBrand)
-            .map((f) => f.model);
+        if (newBrand) {
+            // Фильтруем модели, относящиеся только к выбранной марке
+            const brandSpecificModels = files
+                .filter((f) => f.brand === newBrand)
+                .map((f) => f.model);
 
-        // Убираем дубли
-        const uniqueBrandModels = Array.from(new Set(brandModels));
-        setFilteredModels(uniqueBrandModels);
+            setFilteredModels([...new Set(brandSpecificModels)].sort());
+        } else {
+            setFilteredModels(allModels);
+        }
     };
 
-    // При выборе модели
     const handleModelChange = (e) => {
         setSelectedModel(e.target.value);
     };
 
-    // При выборе минимального года
     const handleMinYearChange = (e) => {
         setSelectedMinYear(e.target.value);
     };
 
-    // При выборе максимального года
     const handleMaxYearChange = (e) => {
         setSelectedMaxYear(e.target.value);
     };
 
-    // Фильтрация итогового списка в соответствии с выбранными значениями
+    // ------------------------------------------------------
+    // 6. Фильтрация для отображаемой таблицы
+    // ------------------------------------------------------
     const getFilteredFiles = () => {
         return files.filter((f) => {
-            // Фильтрация по бренду
             if (selectedBrand && f.brand !== selectedBrand) {
                 return false;
             }
-            // Фильтрация по модели
             if (selectedModel && f.model !== selectedModel) {
                 return false;
             }
-            // Фильтрация по minYear
             if (selectedMinYear && f.minYear !== selectedMinYear) {
                 return false;
             }
-            // Фильтрация по maxYear
             if (selectedMaxYear && f.maxYear !== selectedMaxYear) {
                 return false;
             }
-
             return true;
         });
     };
-
     const filteredFiles = getFilteredFiles();
 
-
-    // Состояния для механизма «Подробнее»
-    const [expandedFile, setExpandedFile] = useState(null); // какой файл сейчас «развёрнут»
-    const [downloadedData, setDownloadedData] = useState([]); // список авто, полученных с сервера
-
-    useEffect(() => {
-        fetchFiles();
-    }, []);
-
-    // При нажатии «Подробнее» загружаем данные файла
+    // ------------------------------------------------------
+    // 7. Кнопка "Подробнее" (accordion)
+    // ------------------------------------------------------
     const handleShowDetails = async (fileName) => {
-        // Если мы повторно нажимаем на тот же файл — сворачиваем
+        // Тот же файл -> свернуть
         if (expandedFile === fileName) {
             setExpandedFile(null);
-            setDownloadedData([]);
+            setFileDetails([]);
             return;
         }
 
-        // Иначе раскрываем новый
-        setExpandedFile(fileName);
+        setExpandedFile(fileName); // раскрываем новый
 
         try {
             const tokenData = JSON.parse(localStorage.getItem("user"));
             const token = tokenData?.token;
 
+            // Запрос на download-car-info
             const response = await axios.get(
                 `http://localhost:8080/api/cars/download-car-info/${fileName}`,
                 {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
+                    headers: { Authorization: `Bearer ${token}` },
                 }
             );
-            // Ответ сервера: массив объектов [{Title, Price, Year, ...}, ...]
-            setDownloadedData(response.data);
+            setFileDetails(response.data); // массив [{Title, Price, Year, ...}, ...]
         } catch (err) {
-            setError(`Ошибка при загрузке данных файла "${fileName}": ${err.message}`);
+            setError("Ошибка при загрузке деталей: " + err.message);
         }
     };
 
+    // ------------------------------------------------------
+    // 8. Рендер
+    // ------------------------------------------------------
     return (
         <div className="container-fluid vh-100 d-flex">
-            {/* Левая колонка (меню) */}
+            {/* Боковое меню (слева) - как в BoardAdmin */}
             <div className="col-2 bg-light text-dark p-3">
                 <ul className="nav flex-column">
                     <li
-                        className={`nav-item p-2 ${
-                            activeTab === "tab1" ? "bg-primary text-white" : ""
-                        }`}
-                        onClick={() => handleTabChange("tab1")}
+                        className={`nav-item p-2 ${activeTab === "home" ? "bg-primary text-white" : ""}`}
+                        onClick={() => handleTabChange("home")}
                     >
                         <span className="nav-link curs-pointer">Главная</span>
                     </li>
                     <li
-                        className={`nav-item p-2 ${
-                            activeTab === "tab2" ? "bg-primary text-white" : ""
-                        }`}
-                        onClick={() => handleTabChange("tab2")}
+                        className={`nav-item p-2 ${activeTab === "cars" ? "bg-primary text-white" : ""}`}
+                        onClick={() => handleTabChange("cars")}
                     >
-                        <span className="nav-link curs-pointer">Список имеющихся авто</span>
+                        <span className="nav-link curs-pointer">Данные о машинах</span>
                     </li>
                     <li
-                        className={`nav-item p-2 ${
-                            activeTab === "tab3" ? "bg-primary text-white" : ""
-                        }`}
-                        onClick={() => handleTabChange("tab3")}
+                        className={`nav-item p-2 ${activeTab === "add-cars" ? "bg-primary text-white" : ""}`}
+                        onClick={() => handleTabChange("add-cars")}
                     >
                         <span className="nav-link curs-pointer">Добавить данные о машинах</span>
                     </li>
                 </ul>
             </div>
 
-            {/* Правая колонка (основной контент) */}
+            {/* Основной контент (справа) */}
             <div className="col-10 p-4">
-                {activeTab === "tab1" && (
-                    <div>
-                        <h1>Добро пожаловать в панель работы со статистикой!</h1>
-                        <p>Подробное описание как работать с данной панелью и что она может</p>
-                    </div>
+                {/* Вкладка 1: Главная */}
+                {activeTab === "home" && (
+                    <h1>Добро пожаловать в панель администратора!</h1>
                 )}
 
-                {activeTab === "tab2" && (
-                    <div className="container mt-4">
-                        <h2>Список сохранённых файлов</h2>
+                {/* Вкладка 2: "Данные о машинах" (с нашей фильтрацией и кнопкой "Подробнее") */}
+                {activeTab === "cars" && (
+                    <div>
+                        <h3>Фильтрация данных о машинах</h3>
+
+                        {loading && <p>Загрузка...</p>}
                         {error && <div className="alert alert-danger">{error}</div>}
 
-                        <table className="table table-bordered table-striped">
-                            <thead>
-                            <tr>
-                                <th>Марка</th>
-                                <th>Модель</th>
-                                <th>Мин. год</th>
-                                <th>Макс. год</th>
-                                <th>Кол-во стр.</th>
-                                <th>Дата создания</th>
-                                <th>Размер (байт)</th>
-                                <th>Операции</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            {files.map((file, index) => (
-                                <React.Fragment key={index}>
-                                    <tr>
-                                        <td>{file.brand}</td>
-                                        <td>{file.model}</td>
-                                        <td>{file.minYear}</td>
-                                        <td>{file.maxYear}</td>
-                                        <td>{file.pages}</td>
-                                        <td>{new Date(file.creationDate).toLocaleString()}</td>
-                                        <td>{file.fileSize}</td>
-                                        <td>
-                                            <button
-                                                className="btn btn-info btn-sm"
-                                                onClick={() => handleShowDetails(file.fileName)}
-                                            >
-                                                Подробнее
-                                            </button>
-                                        </td>
-                                    </tr>
+                        {/* Блок с выпадающими списками */}
+                        <div className="row mb-3">
+                            <div className="col-md-3">
+                                <label>Марка</label>
+                                <select
+                                    className="form-control"
+                                    value={selectedBrand}
+                                    onChange={handleBrandChange}
+                                >
+                                    <option value="">Все</option>
+                                    {brands.map((b) => (
+                                        <option key={b} value={b}>
+                                            {b}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
 
-                                    {/* Если файл "развёрнут", показываем дополнительную строку с таблицей */}
-                                    {expandedFile === file.fileName && (
+                            <div className="col-md-3">
+                                <label>Модель</label>
+                                <select
+                                    className="form-control"
+                                    value={selectedModel}
+                                    onChange={handleModelChange}
+                                    disabled={!selectedBrand}
+                                >
+                                    <option value="">Все</option>
+                                    {(selectedBrand ? filteredModels : allModels).map((m) => (
+                                        <option key={m} value={m}>
+                                            {m}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="col-md-3">
+                                <label>Мин. год</label>
+                                <select
+                                    className="form-control"
+                                    value={selectedMinYear}
+                                    onChange={handleMinYearChange}
+                                >
+                                    <option value="">Все</option>
+                                    {minYears.map((y) => (
+                                        <option key={y} value={y}>
+                                            {y}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="col-md-3">
+                                <label>Макс. год</label>
+                                <select
+                                    className="form-control"
+                                    value={selectedMaxYear}
+                                    onChange={handleMaxYearChange}
+                                >
+                                    <option value="">Все</option>
+                                    {maxYears.map((y) => (
+                                        <option key={y} value={y}>
+                                            {y}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Таблица с результатами */}
+                        {filteredFiles.length > 0 ? (
+                            <table className="table table-bordered table-striped">
+                                <thead>
+                                <tr>
+                                    <th>Название файла</th>
+                                    <th>Марка</th>
+                                    <th>Модель</th>
+                                    <th>Мин. год</th>
+                                    <th>Макс. год</th>
+                                    <th>Кол-во стр.</th>
+                                    <th>Размер (байт)</th>
+                                    <th>Дата создания</th>
+                                    <th>Операции</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {filteredFiles.map((f, idx) => (
+                                    <React.Fragment key={idx}>
                                         <tr>
-                                            {/* colSpan = кол-ву столбцов в основной строке */}
-                                            <td colSpan="8">
-                                                {downloadedData && downloadedData.length > 0 ? (
-                                                    <table className="table table-bordered mt-3">
-                                                        <thead>
-                                                        <tr>
-                                                            <th>Название</th>
-                                                            <th>Год</th>
-                                                            <th>Цена</th>
-                                                            <th>Пробег</th>
-                                                            <th>Объём</th>
-                                                            <th>Топливо</th>
-                                                            <th>Кузов</th>
-                                                            <th>КПП</th>
-                                                            <th>Ссылка</th>
-                                                        </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                        {downloadedData.map((car, idx) => (
-                                                            <tr key={idx}>
-                                                                <td>{car.Title}</td>
-                                                                <td>{car.Year}</td>
-                                                                <td>{car.Price}</td>
-                                                                <td>{car.Mileage}</td>
-                                                                <td>{car.EngineVolume}</td>
-                                                                <td>{car.Fuel}</td>
-                                                                <td>{car.ConditionBody}</td>
-                                                                <td>{car.Transmission}</td>
-                                                                <td>
-                                                                    <a
-                                                                        href={car.Link}
-                                                                        target="_blank"
-                                                                        rel="noopener noreferrer"
-                                                                    >
-                                                                        Перейти
-                                                                    </a>
-                                                                </td>
-                                                            </tr>
-                                                        ))}
-                                                        </tbody>
-                                                    </table>
-                                                ) : (
-                                                    <p>Нет данных или идёт загрузка...</p>
-                                                )}
+                                            <td>{f.fileName}</td>
+                                            <td>{f.brand}</td>
+                                            <td>{f.model}</td>
+                                            <td>{f.minYear}</td>
+                                            <td>{f.maxYear}</td>
+                                            <td>{f.pages}</td>
+                                            <td>{f.fileSize}</td>
+                                            <td>{new Date(f.creationDate).toLocaleString()}</td>
+                                            <td>
+                                                <button
+                                                    className="btn btn-info btn-sm"
+                                                    onClick={() => handleShowDetails(f.fileName)}
+                                                >
+                                                    Подробнее
+                                                </button>
                                             </td>
                                         </tr>
-                                    )}
-                                </React.Fragment>
-                            ))}
-                            </tbody>
-                        </table>
+
+                                        {/* Раскрывающаяся доп. строка (accordion) */}
+                                        {expandedFile === f.fileName && (
+                                            <tr>
+                                                <td colSpan="9">
+                                                    {fileDetails && fileDetails.length > 0 ? (
+                                                        <table className="table table-bordered mt-3">
+                                                            <thead>
+                                                            <tr>
+                                                                <th>Название</th>
+                                                                <th>Год</th>
+                                                                <th>Цена</th>
+                                                                <th>Пробег</th>
+                                                                <th>Объем двигателя</th>
+                                                                <th>Топливо</th>
+                                                                <th>Кузов</th>
+                                                                <th>Трансмиссия</th>
+                                                                <th>Ссылка</th>
+                                                                <th>Описание</th>
+                                                            </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                            {fileDetails.map((car, i) => (
+                                                                <tr key={i}>
+                                                                    <td>{car.Title}</td>
+                                                                    <td>{car.Year}</td>
+                                                                    <td>{car.Price}</td>
+                                                                    <td>{car.Mileage}</td>
+                                                                    <td>{car.EngineVolume}</td>
+                                                                    <td>{car.Fuel}</td>
+                                                                    <td>{car.ConditionBody}</td>
+                                                                    <td>{car.Transmission}</td>
+                                                                    <td>
+                                                                        <a
+                                                                            href={car.Link}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                        >
+                                                                            Перейти
+                                                                        </a>
+                                                                    </td>
+                                                                    <td>{car.RawDescription}</td>
+                                                                </tr>
+                                                            ))}
+                                                            </tbody>
+                                                        </table>
+                                                    ) : (
+                                                        <p>Нет данных или идёт загрузка...</p>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </React.Fragment>
+                                ))}
+                                </tbody>
+                            </table>
+                        ) : (
+                            !loading && <p>Нет данных для отображения.</p>
+                        )}
                     </div>
                 )}
 
-                {activeTab === "tab3" && <div>Содержимое таба 3</div>}
+                {/* Вкладка 3: "Добавить данные о машинах" */}
+                {activeTab === "add-cars" && (
+                    <div>
+                        <h1>Здесь может быть форма добавления данных</h1>
+                        <p>Разместите форму или другую логику по вашему усмотрению.</p>
+                    </div>
+                )}
             </div>
         </div>
     );
