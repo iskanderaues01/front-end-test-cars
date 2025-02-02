@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 
-const Statistic = () => {
+const CarFileFilterWithMenu = () => {
     // ------------------------------------------------------
     // 1. Управление вкладками (меню слева)
     // ------------------------------------------------------
@@ -9,9 +9,9 @@ const Statistic = () => {
 
     const handleTabChange = (tab) => {
         setActiveTab(tab);
-        // Если при переключении на вкладку "cars" вам нужно заново грузить список — зовите fetchData() здесь
+        // Если при переключении на вкладку "cars" нужно заново грузить список — зовите fetchData() тут
         if (tab === "cars") {
-            fetchData(); // Например, перезагрузить сразу
+            fetchData();
         }
     };
 
@@ -22,29 +22,35 @@ const Statistic = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    // Для селектов
+    // Для выпадающих списков
     const [brands, setBrands] = useState([]);
     const [allModels, setAllModels] = useState([]);
     const [minYears, setMinYears] = useState([]);
     const [maxYears, setMaxYears] = useState([]);
 
-    // Выбор пользователя
+    // Выбор пользователя в селектах
     const [selectedBrand, setSelectedBrand] = useState("");
     const [selectedModel, setSelectedModel] = useState("");
     const [selectedMinYear, setSelectedMinYear] = useState("");
     const [selectedMaxYear, setSelectedMaxYear] = useState("");
 
-    // Модели, релевантные выбранной марке
+    // Отфильтрованные модели, привязанные к выбранной марке
     const [filteredModels, setFilteredModels] = useState([]);
 
     // ------------------------------------------------------
     // 3. "Подробнее" (accordion)
     // ------------------------------------------------------
-    const [expandedFile, setExpandedFile] = useState(null); // какое имя файла сейчас развёрнуто
-    const [fileDetails, setFileDetails] = useState([]);     // данные, пришедшие от "Подробнее"
+    const [expandedFile, setExpandedFile] = useState(null);
+    const [fileDetails, setFileDetails] = useState([]);
 
     // ------------------------------------------------------
-    // 4. Основная загрузка: парсинг fileName -> brand, model и т.д.
+    // 4. Состояние для "Перейти к анализу"
+    // ------------------------------------------------------
+    // Здесь мы сохраним объект выбранного файла (brand, model, fileName, ...)
+    const [analysisFile, setAnalysisFile] = useState(null);
+
+    // ------------------------------------------------------
+    // 5. Основная загрузка: парсинг fileName -> brand, model, ...
     // ------------------------------------------------------
     const fetchData = async () => {
         setLoading(true);
@@ -59,7 +65,7 @@ const Statistic = () => {
                 },
             });
 
-            // Преобразуем fileName вида: "bmw_528_2010_2015_7.json"
+            // fileName вида "bmw_528_2010_2015_7.json"
             const parsedFiles = response.data.map((item) => {
                 const withoutExt = item.fileName.replace(".json", "");
                 const [brand, model, minY, maxY, pages] = withoutExt.split("_");
@@ -78,7 +84,7 @@ const Statistic = () => {
 
             setFiles(parsedFiles);
 
-            // Уникальные значения
+            // Уникальные поля для селектов
             const brandSet = new Set();
             const modelSet = new Set();
             const minYearSet = new Set();
@@ -102,16 +108,8 @@ const Statistic = () => {
         }
     };
 
-    // Если вам нужно грузить список только один раз при монтировании,
-    // раскомментируйте useEffect (по желанию):
-    /*
-    useEffect(() => {
-      fetchData();
-    }, []);
-    */
-
     // ------------------------------------------------------
-    // 5. Обработчики для селектов (марка, модель, годы)
+    // 6. Обработчики селектов
     // ------------------------------------------------------
     const handleBrandChange = (e) => {
         const newBrand = e.target.value;
@@ -119,7 +117,6 @@ const Statistic = () => {
         setSelectedModel("");
 
         if (newBrand) {
-            // Фильтруем модели, относящиеся только к выбранной марке
             const brandSpecificModels = files
                 .filter((f) => f.brand === newBrand)
                 .map((f) => f.model);
@@ -143,7 +140,7 @@ const Statistic = () => {
     };
 
     // ------------------------------------------------------
-    // 6. Фильтрация для отображаемой таблицы
+    // 7. Фильтрация (по селектам)
     // ------------------------------------------------------
     const getFilteredFiles = () => {
         return files.filter((f) => {
@@ -165,23 +162,21 @@ const Statistic = () => {
     const filteredFiles = getFilteredFiles();
 
     // ------------------------------------------------------
-    // 7. Кнопка "Подробнее" (accordion)
+    // 8. "Подробнее"
     // ------------------------------------------------------
     const handleShowDetails = async (fileName) => {
-        // Тот же файл -> свернуть
         if (expandedFile === fileName) {
+            // Повторный клик — свернуть
             setExpandedFile(null);
             setFileDetails([]);
             return;
         }
 
-        setExpandedFile(fileName); // раскрываем новый
-
+        setExpandedFile(fileName);
         try {
             const tokenData = JSON.parse(localStorage.getItem("user"));
             const token = tokenData?.token;
 
-            // Запрос на download-car-info
             const response = await axios.get(
                 `http://localhost:8080/api/cars/download-car-info/${fileName}`,
                 {
@@ -195,11 +190,20 @@ const Statistic = () => {
     };
 
     // ------------------------------------------------------
-    // 8. Рендер
+    // 9. "Перейти к анализу"
+    // ------------------------------------------------------
+    // Сохраняем файл в analysisFile и переключаем вкладку
+    const handleGoToAnalysis = (fileObj) => {
+        setAnalysisFile(fileObj);
+        setActiveTab("analysis-scope");
+    };
+
+    // ------------------------------------------------------
+    // 10. Рендер
     // ------------------------------------------------------
     return (
         <div className="container-fluid vh-100 d-flex">
-            {/* Боковое меню (слева) - как в BoardAdmin */}
+            {/* Боковое меню (слева), аналогично BoardAdmin */}
             <div className="col-2 bg-light text-dark p-3">
                 <ul className="nav flex-column">
                     <li
@@ -220,6 +224,14 @@ const Statistic = () => {
                     >
                         <span className="nav-link curs-pointer">Добавить данные о машинах</span>
                     </li>
+                    <li
+                        className={`nav-item p-2 ${
+                            activeTab === "analysis-scope" ? "bg-primary text-white" : ""
+                        }`}
+                        onClick={() => handleTabChange("analysis-scope")}
+                    >
+                        <span className="nav-link curs-pointer">Анализ файла</span>
+                    </li>
                 </ul>
             </div>
 
@@ -230,7 +242,7 @@ const Statistic = () => {
                     <h1>Добро пожаловать в панель администратора!</h1>
                 )}
 
-                {/* Вкладка 2: "Данные о машинах" (с нашей фильтрацией и кнопкой "Подробнее") */}
+                {/* Вкладка 2: Данные о машинах (фильтр + таблица) */}
                 {activeTab === "cars" && (
                     <div>
                         <h3>Фильтрация данных о машинах</h3>
@@ -238,7 +250,7 @@ const Statistic = () => {
                         {loading && <p>Загрузка...</p>}
                         {error && <div className="alert alert-danger">{error}</div>}
 
-                        {/* Блок с выпадающими списками */}
+                        {/* Блок селектов */}
                         <div className="row mb-3">
                             <div className="col-md-3">
                                 <label>Марка</label>
@@ -306,7 +318,7 @@ const Statistic = () => {
                             </div>
                         </div>
 
-                        {/* Таблица с результатами */}
+                        {/* Таблица с отфильтрованными файлами */}
                         {filteredFiles.length > 0 ? (
                             <table className="table table-bordered table-striped">
                                 <thead>
@@ -336,15 +348,21 @@ const Statistic = () => {
                                             <td>{new Date(f.creationDate).toLocaleString()}</td>
                                             <td>
                                                 <button
-                                                    className="btn btn-info btn-sm"
+                                                    className="btn btn-info btn-sm mr-1"
                                                     onClick={() => handleShowDetails(f.fileName)}
                                                 >
                                                     Подробнее
                                                 </button>
+                                                <button
+                                                    className="btn btn-primary btn-sm"
+                                                    onClick={() => handleGoToAnalysis(f)}
+                                                >
+                                                    Перейти к анализу
+                                                </button>
                                             </td>
                                         </tr>
 
-                                        {/* Раскрывающаяся доп. строка (accordion) */}
+                                        {/* Раскрывающаяся часть (accordion) */}
                                         {expandedFile === f.fileName && (
                                             <tr>
                                                 <td colSpan="9">
@@ -405,11 +423,53 @@ const Statistic = () => {
                     </div>
                 )}
 
-                {/* Вкладка 3: "Добавить данные о машинах" */}
+                {/* Вкладка 3: "Добавить данные" (пустая для примера) */}
                 {activeTab === "add-cars" && (
                     <div>
-                        <h1>Здесь может быть форма добавления данных</h1>
-                        <p>Разместите форму или другую логику по вашему усмотрению.</p>
+                        <h1>Здесь может быть форма добавления</h1>
+                    </div>
+                )}
+
+                {/* Вкладка 4: "analysis-scope" */}
+                {activeTab === "analysis-scope" && (
+                    <div>
+                        <h2>Анализ выбранного файла</h2>
+                        {analysisFile ? (
+                            <div>
+                                <p>
+                                    <b>Название файла:</b> {analysisFile.fileName}
+                                </p>
+                                <p>
+                                    <b>Марка:</b> {analysisFile.brand}
+                                </p>
+                                <p>
+                                    <b>Модель:</b> {analysisFile.model}
+                                </p>
+                                <p>
+                                    <b>От года:</b> {analysisFile.minYear}, <b>До года:</b>{" "}
+                                    {analysisFile.maxYear}
+                                </p>
+                                <p>
+                                    Здесь можно показывать дополнительные параметры (pages, size,
+                                    дата создания), либо сделать более сложный анализ.
+                                </p>
+                            </div>
+                        ) : (
+                            <div>
+                                <p>Файл для анализа не выбран.</p>
+                                <p>
+                                    Перейдите во вкладку{" "}
+                                    <span
+                                        className="text-primary text-decoration-underline"
+                                        style={{ cursor: "pointer" }}
+                                        onClick={() => setActiveTab("cars")}
+                                    >
+                    Данные о машинах
+                  </span>{" "}
+                                    и выберите нужный файл.
+                                </p>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
@@ -417,4 +477,4 @@ const Statistic = () => {
     );
 };
 
-export default Statistic;
+export default CarFileFilterWithMenu;
