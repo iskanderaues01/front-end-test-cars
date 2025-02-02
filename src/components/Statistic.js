@@ -216,7 +216,7 @@ const CarFileFilterWithMenu = () => {
                         className={`nav-item p-2 ${activeTab === "cars" ? "bg-primary text-white" : ""}`}
                         onClick={() => handleTabChange("cars")}
                     >
-                        <span className="nav-link curs-pointer">Данные о машинах</span>
+                        <span className="nav-link curs-pointer">Каталог данных о машинах</span>
                     </li>
                     <li
                         className={`nav-item p-2 ${activeTab === "add-cars" ? "bg-primary text-white" : ""}`}
@@ -348,13 +348,13 @@ const CarFileFilterWithMenu = () => {
                                             <td>{new Date(f.creationDate).toLocaleString()}</td>
                                             <td>
                                                 <button
-                                                    className="btn btn-info btn-sm mr-1"
+                                                    className="btn btn-info btn-sm mr-1 mb-1"
                                                     onClick={() => handleShowDetails(f.fileName)}
                                                 >
                                                     Подробнее
                                                 </button>
                                                 <button
-                                                    className="btn btn-primary btn-sm"
+                                                    className="btn btn-primary btn-sm mb-1"
                                                     onClick={() => handleGoToAnalysis(f)}
                                                 >
                                                     Перейти к анализу
@@ -433,7 +433,7 @@ const CarFileFilterWithMenu = () => {
                 {/* Вкладка 4: "analysis-scope" */}
                 {activeTab === "analysis-scope" && (
                     <div>
-                        <h2>Анализ выбранного файла</h2>
+                        <h2>Анализ авто</h2>
                         {analysisFile ? (
                             <div>
                                 <p>
