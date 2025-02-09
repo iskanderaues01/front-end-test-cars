@@ -17,6 +17,7 @@ const CarFileFilterWithMenu = () => {
         }
     };
 
+
     // ------------------------------------------------------
     // 2. Данные и фильтр (используются во вкладке "cars")
     // ------------------------------------------------------
@@ -54,7 +55,57 @@ const CarFileFilterWithMenu = () => {
     // ------------------------------------------------------
     // 5. Основная загрузка: парсинг fileName -> brand, model, ...
 
-    // ------------------------------------------------------
+    // Состояния для выбора метода, параметра, результата
+    const [analysisMethod, setAnalysisMethod] = useState("");
+    const [analysisParam, setAnalysisParam] = useState("");
+    const [analysisResult, setAnalysisResult] = useState(null);
+    const [analysisLoading, setAnalysisLoading] = useState(false); // индикатор загрузки
+
+// Функция "Запустить анализ"
+    const handlePerformAnalysis = async () => {
+        if (!analysisFile) {
+            alert("Сначала выберите файл во вкладке «Данные о машинах» (cars).");
+            return;
+        }
+        if (!analysisMethod) {
+            alert("Пожалуйста, выберите метод анализа из списка.");
+            return;
+        }
+        if (analysisMethod === "linear_regression" && !analysisParam) {
+            alert("Для линейной регрессии нужно выбрать конкретный признак (год, пробег и т.д.).");
+            return;
+        }
+
+        try {
+            setAnalysisLoading(true); // показываем индикатор «загрузка»
+
+            const tokenData = JSON.parse(localStorage.getItem("user"));
+            const token = tokenData?.token;
+
+            let finalAnalysisType = analysisMethod;
+            // Если выбрана линейная регрессия, то analysisParam = year / mileage / engine_volume / multiple_linear / dummies
+            if (analysisMethod === "linear_regression" && analysisParam) {
+                finalAnalysisType = analysisParam;
+            }
+
+            // Запрос
+            const response = await axios.get("http://localhost:8080/api/perform-analysis", {
+                headers: { Authorization: `Bearer ${token}` },
+                params: {
+                    analysisType: finalAnalysisType, // например year/mileage/engine_volume/multiple_linear/dummies
+                    fileName: analysisFile.fileName,
+                },
+            });
+
+            setAnalysisResult(response.data);
+        } catch (err) {
+            alert("Ошибка при выполнении анализа: " + err.message);
+        } finally {
+            setAnalysisLoading(false); // скрываем индикатор «загрузка»
+        }
+    };
+
+
 
     useEffect(() => {
         if (activeTab === "analysis-scope" && analysisFile) {
@@ -493,7 +544,7 @@ const CarFileFilterWithMenu = () => {
                                     <img
                                         src={carImage}
                                         alt="Car Preview"
-                                        style={{ maxWidth: "400px", display: "block", marginBottom: "10px" }}
+                                        style={{maxWidth: "400px", display: "block", marginBottom: "10px"}}
                                     />
                                 ) : (
                                     <p>(Изображение не загружено или отсутствует)</p>
@@ -501,6 +552,122 @@ const CarFileFilterWithMenu = () => {
                                 <p>
                                     Для начала анализа выберите метод анализа и параметры.
                                 </p>
+                                {/* Выбор метода анализа */}
+                                <div className="mb-3">
+                                    <label htmlFor="analysisMethod" style={{ fontWeight: "bold" }}>Метод анализа</label>
+                                    <select
+                                        id="analysisMethod"
+                                        className="form-control"
+                                        value={analysisMethod}
+                                        onChange={(e) => {
+                                            setAnalysisMethod(e.target.value);
+                                            setAnalysisParam("");
+                                        }}
+                                    >
+                                        <option value="">-- Выберите метод анализа --</option>
+                                        <option value="linear_regression">Линейная регрессия</option>
+                                        <option value="logistic_regression">Логистическая регрессия</option>
+                                        <option value="machine_learning">Машинное обучение</option>
+                                    </select>
+                                    <small className="text-muted">
+                                        Например, выберите «Линейная регрессия», чтобы спрогнозировать цену.
+                                    </small>
+                                </div>
+
+                                {/* Если метод "Линейная регрессия", показываем выпадающий список признаков */}
+                                {analysisMethod === "linear_regression" && (
+                                    <div className="mb-3">
+                                        <label htmlFor="analysisParam" style={{ fontWeight: "bold" }}>Признак (переменная)</label>
+                                        <select
+                                            id="analysisParam"
+                                            className="form-control"
+                                            value={analysisParam}
+                                            onChange={(e) => setAnalysisParam(e.target.value)}
+                                        >
+                                            <option value="">-- Выберите признак --</option>
+                                            <option value="year">Год (year)</option>
+                                            <option value="mileage">Пробег (mileage)</option>
+                                            <option value="engine_volume">Объём двигателя (engine_volume)</option>
+                                            <option value="multiple_linear">
+                                                Множественная регрессия (год + пробег + объём)
+                                            </option>
+                                            <option value="dummies">
+                                                Множественная + категории (dummy)
+                                            </option>
+                                        </select>
+                                        <small className="text-muted">
+                                            Выберите конкретный признак или «Множественная регрессия».
+                                        </small>
+                                    </div>
+                                )}
+
+                                <div className="mb-3">
+                                    <button className="btn btn-primary" onClick={handlePerformAnalysis}>
+                                        Запустить анализ
+                                    </button>
+                                    {analysisLoading && (
+                                        <span className="ml-3 text-info">Выполняется анализ...</span>
+                                    )}
+                                </div>
+
+
+                                {analysisResult && (
+                                    <div className="border rounded p-3 mt-3 bg-light">
+                                        <h5>Результат анализа</h5>
+                                        <p style={{ whiteSpace: "pre-line" }}>
+                                            <b>Сообщение:</b> {analysisResult.message}
+                                        </p>
+
+                                        {/* Может быть не у всех вариантов есть CountRecords, MSE, R^2 и т.д. */}
+                                        {analysisResult.FileAnalyzed && (
+                                            <p><b>Файл:</b> {analysisResult.FileAnalyzed}</p>
+                                        )}
+                                        {analysisResult.CarBrand && analysisResult.CarModel && (
+                                            <p>
+                                                <b>Автомобиль:</b> {analysisResult.CarBrand} {analysisResult.CarModel}
+                                            </p>
+                                        )}
+                                        {analysisResult.CountRecords !== undefined && (
+                                            <p><b>Всего записей:</b> {analysisResult.CountRecords}</p>
+                                        )}
+                                        {analysisResult.MSE !== undefined && (
+                                            <p><b>MSE:</b> {analysisResult.MSE}</p>
+                                        )}
+                                        {analysisResult["R^2"] !== undefined && (
+                                            <p><b>R²:</b> {analysisResult["R^2"]}</p>
+                                        )}
+                                        {analysisResult.Equation && (
+                                            <p><b>Уравнение:</b> {analysisResult.Equation}</p>
+                                        )}
+
+                                        {/* PlotPath, если это URL (например, /static/plot... или http://...) */}
+                                        {analysisResult.PlotPath && (
+                                            <div className="mt-2">
+                                                <p><b>График (Plot):</b></p>
+                                                <img
+                                                    src={analysisResult.PlotPath}         // <-- теперь это "data:image/png;base64,..."
+                                                    alt="Plot"
+                                                    style={{ maxWidth: "500px", border: "1px solid #ccc" }}
+                                                />
+                                            </div>
+                                        )}
+
+
+                                        {/* DummyFeatures, если есть */}
+                                        {analysisResult.DummyFeatures && (
+                                            <div className="mt-2">
+                                                <p><b>Учтённые категориальные переменные (dummies):</b></p>
+                                                <ul>
+                                                    {analysisResult.DummyFeatures.map((feat) => (
+                                                        <li key={feat}>{feat}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+
                             </div>
                         ) : (
                             <div>
@@ -509,7 +676,7 @@ const CarFileFilterWithMenu = () => {
                                     Перейдите во вкладку{" "}
                                     <span
                                         className="text-primary text-decoration-underline"
-                                        style={{ cursor: "pointer" }}
+                                        style={{cursor: "pointer"}}
                                         onClick={() => setActiveTab("cars")}
                                     >
                     Данные о машинах
