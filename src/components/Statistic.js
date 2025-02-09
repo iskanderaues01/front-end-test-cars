@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+// В начале файла (рядом с import React...):
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
+
 
 const CarFileFilterWithMenu = () => {
     // ------------------------------------------------------
@@ -104,8 +108,6 @@ const CarFileFilterWithMenu = () => {
             setAnalysisLoading(false); // скрываем индикатор «загрузка»
         }
     };
-
-
 
     useEffect(() => {
         if (activeTab === "analysis-scope" && analysisFile) {
@@ -282,6 +284,95 @@ const CarFileFilterWithMenu = () => {
         setAnalysisFile(fileObj);
         setActiveTab("analysis-scope");
     };
+
+
+    // Добавьте внутрь вашего компонента CarFileFilterWithMenu (на том же уровне, что и handlePerformAnalysis):
+
+    const handleExportExcel = async () => {
+        try {
+            // Создаём новую книгу Excel
+            const workbook = new ExcelJS.Workbook();
+            // Создаём страницу (лист)
+            const worksheet = workbook.addWorksheet("Результат анализа");
+
+            // 1) Запишем текстовые поля из analysisResult (если они есть)
+            // Пример: делаем строки с ключ=значение
+            let rowIndex = 1;
+            worksheet.getCell(`A${rowIndex}`).value = "Сообщение:";
+            worksheet.getCell(`B${rowIndex}`).value = analysisResult.message || "";
+            rowIndex++;
+
+            if (analysisResult.FileAnalyzed) {
+                worksheet.getCell(`A${rowIndex}`).value = "Файл:";
+                worksheet.getCell(`B${rowIndex}`).value = analysisResult.FileAnalyzed;
+                rowIndex++;
+            }
+
+            if (analysisResult.CarBrand || analysisResult.CarModel) {
+                worksheet.getCell(`A${rowIndex}`).value = "Автомобиль:";
+                worksheet.getCell(`B${rowIndex}`).value = `${analysisResult.CarBrand ?? ""} ${analysisResult.CarModel ?? ""}`;
+                rowIndex++;
+            }
+
+            if (analysisResult.CountRecords !== undefined) {
+                worksheet.getCell(`A${rowIndex}`).value = "Всего записей:";
+                worksheet.getCell(`B${rowIndex}`).value = analysisResult.CountRecords;
+                rowIndex++;
+            }
+
+            if (analysisResult.MSE !== undefined) {
+                worksheet.getCell(`A${rowIndex}`).value = "MSE:";
+                worksheet.getCell(`B${rowIndex}`).value = analysisResult.MSE;
+                rowIndex++;
+            }
+
+            if (analysisResult["R^2"] !== undefined) {
+                worksheet.getCell(`A${rowIndex}`).value = "R²:";
+                worksheet.getCell(`B${rowIndex}`).value = analysisResult["R^2"];
+                rowIndex++;
+            }
+
+            if (analysisResult.Equation) {
+                worksheet.getCell(`A${rowIndex}`).value = "Уравнение:";
+                worksheet.getCell(`B${rowIndex}`).value = analysisResult.Equation;
+                rowIndex++;
+            }
+
+            // 2) Если есть график (PlotPath) в формате data:image/png;base64,...
+            //    можем встроить как картинку в Excel.
+            //    ExcelJS умеет добавлять base64-картинки вот так:
+            if (analysisResult.PlotPath && analysisResult.PlotPath.startsWith("data:image/")) {
+                // Добавляем картинку в workbook
+                const imageId = workbook.addImage({
+                    base64: analysisResult.PlotPath, // Ваша строка "data:image/png;base64,...."
+                    extension: "png", // или "jpeg", если другой тип
+                });
+                // Пример: разместим изображение во 2-м столбце (B) от строки rowIndex+1 до rowIndex+15 (как диапазон)
+                // Вы можете настроить размеры и позицию, как вам удобнее
+                worksheet.addImage(imageId, {
+                    tl: { col: 1, row: rowIndex },    // top-left from cell B(rowIndex)
+                    br: { col: 5, row: rowIndex + 14 } // bottom-right (размер картинки)
+                });
+
+                // Подвинем rowIndex, чтобы следующее содержимое писалось ниже
+                rowIndex += 16;
+            }
+
+            // 3) Сохраняем workbook в бинарный массив (Buffer), потом в Blob
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+
+            // 4) Сохраняем файл (используем file-saver)
+            // Имя файла, например "analysis_result.xlsx"
+            saveAs(blob, "analysis_result.xlsx");
+
+        } catch (err) {
+            console.error("Ошибка экспорта в Excel:", err);
+            alert("Не удалось экспортировать в Excel: " + err.message);
+        }
+    };
+
+
 
     // ------------------------------------------------------
     // 10. Рендер
@@ -667,6 +758,17 @@ const CarFileFilterWithMenu = () => {
                                     </div>
                                 )}
 
+                                {analysisResult && (
+                                    <div className="border rounded p-3 mt-3 bg-light">
+                                        <h5>Результат анализа</h5>
+                                        {/* ... вывод всех analysisResult.* ... */}
+
+                                        {/* Кнопка для экспорта в Excel */}
+                                        <button className="btn btn-success mt-3" onClick={handleExportExcel}>
+                                            Экспорт результата в Excel
+                                        </button>
+                                    </div>
+                                )}
 
                             </div>
                         ) : (
