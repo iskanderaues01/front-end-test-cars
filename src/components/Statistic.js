@@ -6,6 +6,8 @@ const CarFileFilterWithMenu = () => {
     // 1. Управление вкладками (меню слева)
     // ------------------------------------------------------
     const [activeTab, setActiveTab] = useState("home");
+    const [imageLoading, setImageLoading] = useState(false);
+
 
     const handleTabChange = (tab) => {
         setActiveTab(tab);
@@ -48,10 +50,43 @@ const CarFileFilterWithMenu = () => {
     // ------------------------------------------------------
     // Здесь мы сохраним объект выбранного файла (brand, model, fileName, ...)
     const [analysisFile, setAnalysisFile] = useState(null);
-
+    const [carImage, setCarImage] = useState(null);
     // ------------------------------------------------------
     // 5. Основная загрузка: парсинг fileName -> brand, model, ...
+
     // ------------------------------------------------------
+
+    useEffect(() => {
+        if (activeTab === "analysis-scope" && analysisFile) {
+            fetchCarImage();
+        }
+    }, [activeTab, analysisFile]);
+
+    const fetchCarImage = async () => {
+        try {
+            setImageLoading(true); // показываем индикатор
+
+            const tokenData = JSON.parse(localStorage.getItem("user"));
+            const token = tokenData?.token;
+
+            const response = await axios.get(
+                "http://localhost:8080/api/cars/get-car-image",
+                {
+                    params: { fileName: analysisFile.fileName },
+                    headers: { Authorization: `Bearer ${token}` },
+                }
+            );
+
+            setCarImage(response.data.imageUrl); // сохраняем URL из поля imageUrl
+        } catch (err) {
+            setError("Ошибка при загрузке изображения: " + err.message);
+            setCarImage(null);
+        } finally {
+            setImageLoading(false); // скрываем индикатор
+        }
+    };
+
+
     const fetchData = async () => {
         setLoading(true);
         setError(null);
@@ -188,7 +223,6 @@ const CarFileFilterWithMenu = () => {
             setError("Ошибка при загрузке деталей: " + err.message);
         }
     };
-
     // ------------------------------------------------------
     // 9. "Перейти к анализу"
     // ------------------------------------------------------
@@ -219,10 +253,10 @@ const CarFileFilterWithMenu = () => {
                         <span className="nav-link curs-pointer">Каталог данных о машинах</span>
                     </li>
                     <li
-                        className={`nav-item p-2 ${activeTab === "add-cars" ? "bg-primary text-white" : ""}`}
-                        onClick={() => handleTabChange("add-cars")}
+                        className={`nav-item p-2 ${activeTab === "history-statistic-cars" ? "bg-primary text-white" : ""}`}
+                        onClick={() => handleTabChange("history-statistic-cars")}
                     >
-                        <span className="nav-link curs-pointer">Добавить данные о машинах</span>
+                        <span className="nav-link curs-pointer">История статистики</span>
                     </li>
                     <li
                         className={`nav-item p-2 ${
@@ -239,7 +273,7 @@ const CarFileFilterWithMenu = () => {
             <div className="col-10 p-4">
                 {/* Вкладка 1: Главная */}
                 {activeTab === "home" && (
-                    <h1>Добро пожаловать в панель администратора!</h1>
+                    <h1>Добро пожаловать в панель работы со статистикой!</h1>
                 )}
 
                 {/* Вкладка 2: Данные о машинах (фильтр + таблица) */}
@@ -424,9 +458,9 @@ const CarFileFilterWithMenu = () => {
                 )}
 
                 {/* Вкладка 3: "Добавить данные" (пустая для примера) */}
-                {activeTab === "add-cars" && (
+                {activeTab === "history-statistic-cars" && (
                     <div>
-                        <h1>Здесь может быть форма добавления</h1>
+                        <h1>История запросов</h1>
                     </div>
                 )}
 
@@ -449,9 +483,23 @@ const CarFileFilterWithMenu = () => {
                                     <b>От года:</b> {analysisFile.minYear}, <b>До года:</b>{" "}
                                     {analysisFile.maxYear}
                                 </p>
+                                {imageLoading ? (
+                                    <div className="text-center mt-3">
+                                        <div className="spinner-border text-primary" role="status">
+                                            <span className="sr-only">Загрузка...</span>
+                                        </div>
+                                    </div>
+                                ) : carImage ? (
+                                    <img
+                                        src={carImage}
+                                        alt="Car Preview"
+                                        style={{ maxWidth: "400px", display: "block", marginBottom: "10px" }}
+                                    />
+                                ) : (
+                                    <p>(Изображение не загружено или отсутствует)</p>
+                                )}
                                 <p>
-                                    Здесь можно показывать дополнительные параметры (pages, size,
-                                    дата создания), либо сделать более сложный анализ.
+                                    Для начала анализа выберите метод анализа и параметры.
                                 </p>
                             </div>
                         ) : (

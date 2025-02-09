@@ -135,6 +135,7 @@ const BoardAdmin = () => {
   };
 
   // Обработчик отправки формы
+  // Обработчик отправки формы
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -144,6 +145,15 @@ const BoardAdmin = () => {
     try {
       const tokenData = JSON.parse(localStorage.getItem("user"));
       const token = tokenData?.token;
+
+      // Приведение значений формы в lowercase
+      const lowercaseParams = {
+        carBrand: formData.carBrand?.toLowerCase() || "",
+        carModel: formData.carModel?.toLowerCase() || "",
+        dateStart: formData.dateStart?.toLowerCase() || "",
+        dateMax: formData.dateMax?.toLowerCase() || "",
+        countPages: formData.countPages?.toString().toLowerCase() || "",
+      };
 
       // Определяем URL запроса
       const url = formData.saveToDb
@@ -155,13 +165,7 @@ const BoardAdmin = () => {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-        params: {
-          carBrand: formData.carBrand,
-          carModel: formData.carModel,
-          dateStart: formData.dateStart,
-          dateMax: formData.dateMax,
-          countPages: formData.countPages,
-        },
+        params: lowercaseParams,
       });
 
       setSavedData(response.data);
