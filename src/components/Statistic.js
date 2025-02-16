@@ -11,13 +11,22 @@ const CarFileFilterWithMenu = () => {
     // ------------------------------------------------------
     const [activeTab, setActiveTab] = useState("home");
     const [imageLoading, setImageLoading] = useState(false);
+// Храним массив записей истории анализа
+    const [analysisHistoryList, setAnalysisHistoryList] = useState([]);
 
+    const [brandFilter, setBrandFilter] = useState("");
+    const [minCountFilter, setMinCountFilter] = useState("");
+    const [dateFilter, setDateFilter] = useState("");
 
     const handleTabChange = (tab) => {
         setActiveTab(tab);
         // Если при переключении на вкладку "cars" нужно заново грузить список — зовите fetchData() тут
         if (tab === "cars") {
             fetchData();
+        }
+
+        if (tab === "history-statistic-cars") {
+            fetchAnalysisHistory();
         }
     };
 
@@ -373,7 +382,201 @@ const CarFileFilterWithMenu = () => {
     };
 
 
+    const handleSaveToDb = async () => {
+        try {
+            const tokenData = JSON.parse(localStorage.getItem("user"));
+            const token = tokenData?.token;
+            const userId = tokenData?.id; // или другой способ узнать userId
 
+            // Формируем тело запроса на основе данных analysisResult
+            const requestBody = {
+                message: analysisResult?.message ?? "",
+                fileAnalyzed: analysisResult?.FileAnalyzed ?? "",
+                countRecords: analysisResult?.CountRecords ?? 0,
+                mse: analysisResult?.MSE ?? 0,
+                rSquared: analysisResult?.["R^2"] ?? 0,
+                equation: analysisResult?.Equation ?? "",
+                imgBase64: analysisResult?.PlotPath ?? "",        // здесь лежит data:image/png;base64,...
+                carBrand: analysisResult?.CarBrand ?? "",
+                carModel: analysisResult?.CarModel ?? "",
+                dummyFeatures: analysisResult?.DummyFeatures
+                    ? JSON.stringify(analysisResult.DummyFeatures)
+                    : null
+            };
+
+            await axios.post(
+                `http://localhost:8080/api/analysis-history/save?userId=${userId}`,
+                requestBody,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                }
+            );
+
+            alert("Успешно сохранено в БД");
+        } catch (err) {
+            console.error("Ошибка сохранения в БД:", err);
+            alert("Не удалось сохранить в БД: " + err.message);
+        }
+    };
+
+// Функция загрузки истории анализа
+    const fetchAnalysisHistory = async () => {
+        try {
+            const tokenData = JSON.parse(localStorage.getItem("user"));
+            const token = tokenData?.token;
+            const userId = tokenData?.id; // Или другой способ получить userId
+
+            const response = await axios.get(
+                `http://localhost:8080/api/analysis-history/user/${userId}`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+
+            setAnalysisHistoryList(response.data);
+        } catch (err) {
+            console.error("Ошибка при загрузке истории анализов:", err);
+            alert("Не удалось загрузить историю анализов: " + err.message);
+        }
+    };
+
+    const handleDownload = (historyItem) => {
+        if (!historyItem.imgBase64) {
+            alert("Нет сохранённого изображения для скачивания");
+            return;
+        }
+        const base64Content = historyItem.imgBase64.split(",")[1];
+        const contentType = historyItem.imgBase64
+            .split(",")[0]
+            .split(":")[1]
+            .split(";")[0];
+
+        // Преобразуем base64 -> Blob -> скачиваем
+        const byteCharacters = atob(base64Content);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: contentType });
+
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", "analysis_image.png"); // Имя сохраняемого файла
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
+    const getFilteredHistory = () => {
+        return analysisHistoryList.filter((item) => {
+            // Фильтр по марке авто (carBrand)
+            if (brandFilter && item.carBrand) {
+                // приведём к нижнему регистру для удобства
+                const brandLower = item.carBrand.toLowerCase();
+                const filterLower = brandFilter.toLowerCase();
+                if (!brandLower.includes(filterLower)) {
+                    return false;
+                }
+            }
+
+            // Фильтр по количеству записей (минимум)
+            if (minCountFilter) {
+                const count = item.countRecords ?? 0; // если null, считаем 0
+                if (count < parseInt(minCountFilter, 10)) {
+                    return false;
+                }
+            }
+
+            // Фильтр по дате (допустим, только проверяем, что item.createdAt >= dateFilter)
+            if (dateFilter && item.createdAt) {
+                // dateFilter в формате "YYYY-MM-DD", преобразуем его и сравниваем
+                const filterDate = new Date(dateFilter);
+                const createdAtDate = new Date(item.createdAt);
+                // если создана раньше фильтра, отбрасываем
+                if (createdAtDate < filterDate) {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+    };
+
+
+    const handleDownloadAnalyzedFile = async () => {
+        // Проверяем, есть ли вообще имя файла
+        if (!analysisResult?.FileAnalyzed) {
+            alert("Не найдено имя файла для скачивания.");
+            return;
+        }
+
+        try {
+            // 1) Получаем токен из localStorage
+            const tokenData = JSON.parse(localStorage.getItem("user"));
+            const token = tokenData?.token;
+
+            // 2) Делаем запрос к серверу, который вернёт JSON (массив объектов, напр. [{Title, Price, Year, ...}, ...])
+            //    Убираем responseType: "blob", т.к. нужно принять именно JSON
+            const response = await axios.get(
+                `http://localhost:8080/api/cars/download-car-info/${analysisResult.FileAnalyzed}`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+
+            const jsonData = response.data;
+            if (!Array.isArray(jsonData) || jsonData.length === 0) {
+                alert("Сервер вернул пустые данные или неправильный формат.");
+                return;
+            }
+
+            // 3) Создаём workbook через exceljs
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet("AnalyzedData");
+
+            // 4) Описываем столбцы Excel (header — название колонки, key — поле JSON, width — ширина)
+            worksheet.columns = [
+                { header: "Title",          key: "Title",          width: 25 },
+                { header: "Price",          key: "Price",          width: 15 },
+                { header: "Year",           key: "Year",           width: 10 },
+                { header: "Link",           key: "Link",           width: 40 },
+                { header: "ConditionBody",  key: "ConditionBody",  width: 20 },
+                { header: "EngineVolume",   key: "EngineVolume",   width: 15 },
+                { header: "Fuel",           key: "Fuel",           width: 10 },
+                { header: "Transmission",   key: "Transmission",   width: 15 },
+                { header: "Mileage",        key: "Mileage",        width: 12 },
+                { header: "RawDescription", key: "RawDescription", width: 40 },
+            ];
+
+            // 5) Заполняем строками из jsonData
+            jsonData.forEach((item) => {
+                worksheet.addRow(item);
+            });
+
+            // 6) Превращаем Workbook в буфер, создаём Blob и скачиваем
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], {
+                type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            });
+
+            // 7) Сохраняем файл с помощью file-saver
+            //    Имя файла берём, например, из analysisResult.FileAnalyzed, либо своё
+            const fileName = analysisResult.FileAnalyzed.replace(".json", ".xlsx") || "analyzed_data.xlsx";
+            saveAs(blob, fileName);
+        } catch (err) {
+            console.error("Ошибка при скачивании/преобразовании:", err);
+            alert("Не удалось скачать данные в Excel: " + err.message);
+        }
+    };
     // ------------------------------------------------------
     // 10. Рендер
     // ------------------------------------------------------
@@ -406,7 +609,7 @@ const CarFileFilterWithMenu = () => {
                         }`}
                         onClick={() => handleTabChange("analysis-scope")}
                     >
-                        <span className="nav-link curs-pointer">Анализ файла</span>
+                        <span className="nav-link curs-pointer">Анализ данных</span>
                     </li>
                 </ul>
             </div>
@@ -599,12 +802,100 @@ const CarFileFilterWithMenu = () => {
                     </div>
                 )}
 
-                {/* Вкладка 3: "Добавить данные" (пустая для примера) */}
-                {activeTab === "history-statistic-cars" && (
-                    <div>
-                        <h1>История запросов</h1>
-                    </div>
-                )}
+
+                {activeTab === "history-statistic-cars" && (() => {
+                    const filteredHistory = getFilteredHistory(); // <-- ВАЖНО: объявляем здесь
+
+                    return (
+                        <div>
+                            <h1>История сохраненных анализов данных</h1>
+
+                            {/* Блок фильтров */}
+                            <div className="row mb-3">
+                                {/* Фильтр по марке */}
+                                <div className="col-md-4">
+                                    <label>Фильтр по марке авто</label>
+                                    <input
+                                        type="text"
+                                        className="form-control"
+                                        value={brandFilter}
+                                        onChange={(e) => setBrandFilter(e.target.value)}
+                                        placeholder="Например: Nissan"
+                                    />
+                                </div>
+
+                                {/* Фильтр по количеству записей (минимум) */}
+                                <div className="col-md-4">
+                                    <label>Минимальное количество записей</label>
+                                    <input
+                                        type="number"
+                                        className="form-control"
+                                        value={minCountFilter}
+                                        onChange={(e) => setMinCountFilter(e.target.value)}
+                                        placeholder="Например: 50"
+                                    />
+                                </div>
+
+                                {/* Фильтр по дате */}
+                                <div className="col-md-4">
+                                    <label>Показать записи с даты</label>
+                                    <input
+                                        type="date"
+                                        className="form-control"
+                                        value={dateFilter}
+                                        onChange={(e) => setDateFilter(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            {filteredHistory.length === 0 ? (
+                                <p>Нет сохранённых записей.</p>
+                            ) : (
+                                <table className="table table-bordered table-striped">
+                                    <thead>
+                                    <tr>
+                                        <th>Марка авто</th>
+                                        <th>Модель авто</th>
+                                        <th>Количество записей</th>
+                                        <th>Дата анализа</th>
+                                        <th>MSE</th>
+                                        <th>R²</th>
+                                        <th>Название файла</th>
+                                        <th>Операции</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    {filteredHistory.map((item) => (
+                                        <tr key={item.id}>
+                                            <td>{item.carBrand ?? "Неизвестно"}</td>
+                                            <td>{item.carModel ?? "Неизвестно"}</td>
+                                            <td>{item.countRecords ?? "Неизвестно"}</td>
+                                            <td>
+                                                {item.createdAt
+                                                    ? new Date(item.createdAt).toLocaleString()
+                                                    : "Неизвестно"}
+                                            </td>
+                                            <td>{item.mse ?? "Неизвестно"}</td>
+                                            <td>{item.rsquared ?? "Неизвестно"}</td>
+                                            <td>{item.fileAnalyzed ?? "Неизвестно"}</td>
+                                            <td>
+                                                <button
+                                                    className="btn btn-info btn-sm"
+                                                    onClick={() => handleDownload(item)}
+                                                >
+                                                    Скачать
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+                    );
+                })()}
+
+
 
                 {/* Вкладка 4: "analysis-scope" */}
                 {activeTab === "analysis-scope" && (
@@ -764,9 +1055,24 @@ const CarFileFilterWithMenu = () => {
                                         {/* ... вывод всех analysisResult.* ... */}
 
                                         {/* Кнопка для экспорта в Excel */}
-                                        <button className="btn btn-success mt-3" onClick={handleExportExcel}>
-                                            Экспорт результата в Excel
-                                        </button>
+                                        <div>
+                                            <button className="btn btn-success mt-3 mr-3" onClick={handleExportExcel}>
+                                                Экспорт результата в Excel
+                                            </button>
+
+                                            <button className="btn btn-info mt-3" onClick={handleSaveToDb}>
+                                                Сохранить в БД
+                                            </button>
+
+                                            <button
+                                                className="btn btn-primary mt-3 ml-3"
+                                                onClick={handleDownloadAnalyzedFile}
+                                            >
+                                                Скачать Данные
+                                            </button>
+                                        </div>
+
+
                                     </div>
                                 )}
 
@@ -775,7 +1081,7 @@ const CarFileFilterWithMenu = () => {
                             <div>
                                 <p>Файл для анализа не выбран.</p>
                                 <p>
-                                    Перейдите во вкладку{" "}
+                                Перейдите во вкладку{" "}
                                     <span
                                         className="text-primary text-decoration-underline"
                                         style={{cursor: "pointer"}}
