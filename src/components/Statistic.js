@@ -17,6 +17,7 @@ const CarFileFilterWithMenu = () => {
     const [brandFilter, setBrandFilter] = useState("");
     const [minCountFilter, setMinCountFilter] = useState("");
     const [dateFilter, setDateFilter] = useState("");
+    const [priceThreshold, setPriceThreshold] = useState("");
 
     const handleTabChange = (tab) => {
         setActiveTab(tab);
@@ -30,6 +31,70 @@ const CarFileFilterWithMenu = () => {
         }
     };
 
+    const handlePerformAnalysisLogic = async () => {
+        if (!analysisFile) {
+            alert("Сначала выберите файл во вкладке «Данные о машинах» (cars).");
+            return;
+        }
+        if (!analysisMethod) {
+            alert("Пожалуйста, выберите метод анализа из списка.");
+            return;
+        }
+
+        const tokenData = JSON.parse(localStorage.getItem("user"));
+        const token = tokenData?.token;
+        const userId = tokenData?.id;
+
+        try {
+            setAnalysisLoading(true);
+            let response;
+
+            if (analysisMethod === "logistic_regression") {
+                if (!priceThreshold) {
+                    alert("Укажите порог цены для логистической регрессии.");
+                    return;
+                }
+                response = await axios.get(
+                    "http://localhost:8080/api/logistic-analysis/perform-logic",
+                    {
+                        headers: { Authorization: `Bearer ${token}` },
+                        params: {
+                            filename: analysisFile.fileName,
+                            priceThreshold: priceThreshold,
+                            userId: userId,
+                            save: true,
+                        },
+                    }
+                );
+            } else if (analysisMethod === "linear_regression") {
+                if (!analysisParam) {
+                    alert("Для линейной регрессии выберите признак для анализа.");
+                    return;
+                }
+                response = await axios.get("http://localhost:8080/api/perform-analysis", {
+                    headers: { Authorization: `Bearer ${token}` },
+                    params: {
+                        analysisType: analysisParam,
+                        fileName: analysisFile.fileName,
+                    },
+                });
+            } else if (analysisMethod === "machine_learning") {
+                response = await axios.get("http://localhost:8080/api/perform-analysis", {
+                    headers: { Authorization: `Bearer ${token}` },
+                    params: {
+                        analysisType: analysisMethod,
+                        fileName: analysisFile.fileName,
+                    },
+                });
+            }
+
+            setAnalysisResult(response.data);
+        } catch (err) {
+            alert("Ошибка при выполнении анализа: " + err.message);
+        } finally {
+            setAnalysisLoading(false);
+        }
+    };
 
     // ------------------------------------------------------
     // 2. Данные и фильтр (используются во вкладке "cars")
@@ -983,20 +1048,46 @@ const CarFileFilterWithMenu = () => {
                                     </div>
                                 )}
 
+                                {analysisMethod === "logistic_regression" && (
+                                    <div className="mb-3">
+                                        <label htmlFor="priceThreshold" style={{ fontWeight: "bold" }}>
+                                            Порог цены
+                                        </label>
+                                        <input
+                                            id="priceThreshold"
+                                            type="number"
+                                            className="form-control"
+                                            value={priceThreshold}
+                                            onChange={(e) => setPriceThreshold(e.target.value)}
+                                            placeholder="Например: 10000000"
+                                        />
+                                        <small className="text-muted">
+                                            Укажите порог цены, выше которого авто считается дорогим.
+                                        </small>
+                                    </div>
+                                )}
+
                                 <div className="mb-3">
-                                    <button className="btn btn-primary" onClick={handlePerformAnalysis}>
-                                        Запустить анализ
-                                    </button>
+                                    {analysisMethod === "logistic_regression" ? (
+                                        <button className="btn btn-primary" onClick={handlePerformAnalysisLogic}>
+                                            Запустить логистическую регрессию
+                                        </button>
+                                    ) : (
+                                        <button className="btn btn-primary" onClick={handlePerformAnalysis}>
+                                            Запустить анализ
+                                        </button>
+                                    )}
                                     {analysisLoading && (
                                         <span className="ml-3 text-info">Выполняется анализ...</span>
                                     )}
                                 </div>
 
 
+
                                 {analysisResult && (
                                     <div className="border rounded p-3 mt-3 bg-light">
                                         <h5>Результат анализа</h5>
-                                        <p style={{ whiteSpace: "pre-line" }}>
+                                        <p style={{whiteSpace: "pre-line"}}>
                                             <b>Сообщение:</b> {analysisResult.message}
                                         </p>
 
@@ -1073,6 +1164,72 @@ const CarFileFilterWithMenu = () => {
                                         </div>
 
 
+                                    </div>
+                                )}
+
+                                {analysisResult && analysisMethod === "logistic_regression" && (
+                                    <div className="border rounded p-3 mt-3 bg-light">
+                                        <h5>Результаты логистической регрессии</h5>
+                                        <p>
+                                            <strong>Файл анализа:</strong>{" "}
+                                            {analysisResult.fileAnalyzed || "Неизвестно"}
+                                        </p>
+                                        <p>
+                                            <strong>Порог цены:</strong>{" "}
+                                            {analysisResult.priceThreshold
+                                                ? Number(analysisResult.priceThreshold).toLocaleString()
+                                                : "Неизвестно"}
+                                        </p>
+                                        <p>
+                                            <strong>Точность (accuracy):</strong>{" "}
+                                            {analysisResult.accuracy !== undefined
+                                                ? analysisResult.accuracy
+                                                : "Неизвестно"}
+                                        </p>
+                                        <p>
+                                            <strong>Матрица ошибок:</strong>{" "}
+                                            {analysisResult.confusionMatrix || "Неизвестно"}
+                                        </p>
+                                        <p>
+                                            <strong>Коэффициенты:</strong>{" "}
+                                            {analysisResult.coefficients || "Неизвестно"}
+                                        </p>
+                                        <p>
+                                            <strong>Перехват (intercept):</strong>{" "}
+                                            {analysisResult.intercept || "Неизвестно"}
+                                        </p>
+                                        <p>
+                                            <strong>Признаки:</strong>{" "}
+                                            {analysisResult.features || "Неизвестно"}
+                                        </p>
+                                        <p style={{ whiteSpace: "pre-line" }}>
+                                            <strong>Пояснение:</strong>{" "}
+                                            {analysisResult.explanation || "Неизвестно"}
+                                        </p>
+                                        <div className="mt-3">
+                                            <p>
+                                                <strong>График:</strong>
+                                            </p>
+                                            {analysisResult.imgBase64 ? (
+                                                <img
+                                                    src={
+                                                        analysisResult.imgBase64.startsWith("data:")
+                                                            ? analysisResult.imgBase64
+                                                            : `data:image/png;base64,${analysisResult.imgBase64}`
+                                                    }
+                                                    alt="График анализа"
+                                                    style={{ maxWidth: "500px", border: "1px solid #ccc" }}
+                                                />
+                                            ) : (
+                                                <p>Неизвестно</p>
+                                            )}
+                                        </div>
+                                        <p>
+                                            <strong>Дата анализа:</strong>{" "}
+                                            {analysisResult.createdAt
+                                                ? new Date(analysisResult.createdAt).toLocaleString()
+                                                : "Неизвестно"}
+                                        </p>
                                     </div>
                                 )}
 
