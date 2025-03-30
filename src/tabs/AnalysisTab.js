@@ -317,28 +317,35 @@ const AnalysisTab = ({ analysisFile }) => {
                     rowIndex++;
                 }
             } else if (analysisMethod === "machine_learning") {
-                if (analysisResult?.FileAnalyzed) {
-                    worksheet.getCell(`A${rowIndex}`).value = "Файл анализа:";
-                    worksheet.getCell(`B${rowIndex}`).value = analysisResult.FileAnalyzed;
+                if (analysisParam === "future_price") {
+                    worksheet.getCell(`A${rowIndex}`).value = "Год:";
+                    worksheet.getCell(`B${rowIndex}`).value = analysisResult.futureYear;
                     rowIndex++;
-                }
-                if (analysisResult?.CarBrand || analysisResult?.CarModel) {
-                    worksheet.getCell(`A${rowIndex}`).value = "Автомобиль:";
-                    worksheet.getCell(`B${rowIndex}`).value = `${analysisResult.CarBrand ?? ""} ${analysisResult.CarModel ?? ""}`;
+                    worksheet.getCell(`A${rowIndex}`).value = "Пробег:";
+                    worksheet.getCell(`B${rowIndex}`).value = analysisResult.futureMileage;
                     rowIndex++;
-                }
-                if (analysisResult?.CountRecords !== undefined) {
-                    worksheet.getCell(`A${rowIndex}`).value = "Всего записей:";
-                    worksheet.getCell(`B${rowIndex}`).value = analysisResult.CountRecords;
+                    worksheet.getCell(`A${rowIndex}`).value = "Объем двигателя:";
+                    worksheet.getCell(`B${rowIndex}`).value = analysisResult.futureEngineVolume;
                     rowIndex++;
-                }
-                if (analysisResult?.FeatureImportance) {
-                    worksheet.getCell(`A${rowIndex}`).value = "Важность признаков:";
-                    const features = analysisResult.FeatureImportance;
-                    const importanceText = Object.entries(features)
-                        .map(([feat, imp]) => `${feat}: ${imp}`)
-                        .join("\n");
-                    worksheet.getCell(`B${rowIndex}`).value = importanceText;
+                    worksheet.getCell(`A${rowIndex}`).value = "Топливо:";
+                    worksheet.getCell(`B${rowIndex}`).value = analysisResult.futureFuel;
+                    rowIndex++;
+                    worksheet.getCell(`A${rowIndex}`).value = "Трансмиссия:";
+                    worksheet.getCell(`B${rowIndex}`).value = analysisResult.futureTransmission;
+                    rowIndex++;
+                    worksheet.getCell(`A${rowIndex}`).value = "Описание результата:";
+                    worksheet.getCell(`B${rowIndex}`).value = analysisResult.analysisResult;
+                    worksheet.getCell(`B${rowIndex}`).alignment = { wrapText: true };
+                    rowIndex++;
+                } else if (analysisParam === "epoch_analysis") {
+                    worksheet.getCell(`A${rowIndex}`).value = "Epochs:";
+                    worksheet.getCell(`B${rowIndex}`).value = analysisResult.epochs;
+                    rowIndex++;
+                    worksheet.getCell(`A${rowIndex}`).value = "Batch size:";
+                    worksheet.getCell(`B${rowIndex}`).value = analysisResult.batchSize;
+                    rowIndex++;
+                    worksheet.getCell(`A${rowIndex}`).value = "Описание результата:";
+                    worksheet.getCell(`B${rowIndex}`).value = analysisResult.analysisResult;
                     worksheet.getCell(`B${rowIndex}`).alignment = { wrapText: true };
                     rowIndex++;
                 }
@@ -351,42 +358,45 @@ const AnalysisTab = ({ analysisFile }) => {
                 }
             }
 
-            // Добавляем график, если он есть.
-            // Если метод логистической регрессии, используем imgBase64, иначе PlotPath
             let imageData = null;
+            let extension = "png";
 
             if (analysisMethod === "logistic_regression" && analysisResult?.imgBase64) {
                 imageData = analysisResult.imgBase64;
-            } else if (analysisResult?.PlotPath) {
+            } else if (analysisMethod === "linear_regression" && analysisResult?.PlotPath) {
                 imageData = analysisResult.PlotPath;
+            } else if (analysisMethod === "machine_learning") {
+                if (analysisResult?.priceDistributionPlot) {
+                    imageData = analysisResult.priceDistributionPlot;
+                } else if (analysisResult?.epochTrainingPlot) {
+                    imageData = analysisResult.epochTrainingPlot;
+                }
             }
 
+// Обработка изображения и вставка
             if (imageData) {
-                let base64 = "";
-                let extension = "png";
-
-                if (imageData.startsWith("data:image/")) {
-                    // формат: data:image/png;base64,...
-                    base64 = imageData.split(",")[1];
-                    extension = imageData.substring(11, imageData.indexOf(";"));
-                } else {
-                    // если просто base64 без префикса
-                    base64 = imageData;
-                }
-
                 try {
+                    let base64 = "";
+
+                    if (imageData.startsWith("data:image/")) {
+                        base64 = imageData.split(",")[1];
+                        extension = imageData.substring(11, imageData.indexOf(";"));
+                    } else {
+                        base64 = imageData;
+                    }
+
                     const imageId = workbook.addImage({
                         base64,
-                        extension
+                        extension,
                     });
 
                     worksheet.addImage(imageId, {
                         tl: { col: 1, row: rowIndex },
-                        br: { col: 5, row: rowIndex + 14 }
+                        br: { col: 5, row: rowIndex + 14 },
                     });
                     rowIndex += 16;
                 } catch (err) {
-                    console.warn("Не удалось добавить изображение:", err);
+                    console.warn("Не удалось вставить изображение:", err);
                 }
             }
 
