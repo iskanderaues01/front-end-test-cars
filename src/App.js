@@ -13,6 +13,9 @@ import BoardUser from "./components/BoardUser";
 import BoardModerator from "./components/BoardModerator";
 import BoardAdmin from "./components/BoardAdmin";
 import Statistic from "./components/Statistic";
+import Contact from "./components/Contact";
+import TicketList from "./components/TicketList";
+
 
 import { logout } from "./actions/auth";
 import { clearMessage } from "./actions/message";
@@ -94,6 +97,12 @@ const App = () => {
                 Статистика
               </Link>
             </li>
+            <li className="nav-item">
+              <Link to={"/ticket"} className="nav-link">
+                Список заявок
+              </Link>
+            </li>
+
 
             {showModeratorBoard && (
                 <li className="nav-item">
@@ -160,6 +169,8 @@ const App = () => {
                   <Route path="/register" element={<Register/>}/>
                   <Route path="/profile" element={<Profile/>}/>
                   <Route path="/user" element={<BoardUser/>}/>
+                  <Route path="/contact" element={<Contact />} />
+                  <Route path="/ticket" element={<TicketList />} />
                 </Routes>
               </div>
           )}
