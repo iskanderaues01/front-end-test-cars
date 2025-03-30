@@ -14,28 +14,53 @@ const HistoryTab = () => {
             const token = tokenData?.token;
             const userId = tokenData?.id;
 
-            const url =
-                method === "linear"
-                    ? `http://localhost:8080/api/analysis-history/user/${userId}`
-                    : `http://localhost:8080/api/logistic-analysis/history?userId=${userId}`;
+            let data = [];
 
-            const response = await axios.get(url, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            if (method === "linear") {
+                const res = await axios.get(`http://localhost:8080/api/analysis-history/user/${userId}`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                data = res.data;
 
-            // если логистическая — модифицируем объекты
-            const data =
-                method === "logistic"
-                    ? response.data.map((item) => {
-                        const parsed = parseFileAnalyzed(item.fileAnalyzed);
-                        return {
-                            ...item,
-                            carBrand: parsed.brand,
-                            carModel: parsed.model,
-                            countRecords: getRandomInt(25, 150),
-                        };
-                    })
-                    : response.data;
+            } else if (method === "logistic") {
+                const res = await axios.get(`http://localhost:8080/api/logistic-analysis/history?userId=${userId}`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                data = res.data.map(item => ({
+                    ...item,
+                    carBrand: parseFileAnalyzed(item.fileAnalyzed).brand,
+                    carModel: parseFileAnalyzed(item.fileAnalyzed).model,
+                    countRecords: getRandomInt(25, 150),
+                }));
+
+            } else if (method === "machineLearning") {
+                const [futureRes, epochRes] = await Promise.all([
+                    axios.get(`http://localhost:8080/api/history/future-price?userId=${userId}`, {
+                        headers: { Authorization: `Bearer ${token}` },
+                    }),
+                    axios.get(`http://localhost:8080/api/history/epochs?userId=${userId}`, {
+                        headers: { Authorization: `Bearer ${token}` },
+                    }),
+                ]);
+
+                const futureMapped = futureRes.data.map(item => ({
+                    ...item,
+                    type: "future",
+                    carBrand: parseFileAnalyzed(item.fileAnalyzed).brand,
+                    carModel: parseFileAnalyzed(item.fileAnalyzed).model,
+                    countRecords: getRandomInt(25, 150),
+                }));
+
+                const epochMapped = epochRes.data.map(item => ({
+                    ...item,
+                    type: "epoch",
+                    carBrand: parseFileAnalyzed(item.fileAnalyzed).brand,
+                    carModel: parseFileAnalyzed(item.fileAnalyzed).model,
+                    countRecords: getRandomInt(25, 150),
+                }));
+
+                data = [...futureMapped, ...epochMapped];
+            }
 
             setAnalysisHistoryList(data);
         } catch (err) {
@@ -50,7 +75,7 @@ const HistoryTab = () => {
 
     const parseFileAnalyzed = (path) => {
         if (!path) return { brand: "Неизвестно", model: "Неизвестно" };
-        const filename = path.split("/").pop(); // toyota_camry_2010_2015_10.json
+        const filename = path.split("/").pop();
         const parts = filename.split("_");
         return {
             brand: parts[0] ?? "Неизвестно",
@@ -97,9 +122,10 @@ const HistoryTab = () => {
                 const count = item.countRecords ?? 0;
                 if (count < parseInt(minCountFilter, 10)) return false;
             }
-            if (dateFilter && item.createdAt) {
+            const createdDate = item.createdAt || item.created;
+            if (dateFilter && createdDate) {
                 const filterDate = new Date(dateFilter);
-                const createdAtDate = new Date(item.createdAt);
+                const createdAtDate = new Date(createdDate);
                 if (createdAtDate < filterDate) return false;
             }
             return true;
@@ -122,6 +148,7 @@ const HistoryTab = () => {
                     >
                         <option value="linear">Линейная регрессия</option>
                         <option value="logistic">Логистическая регрессия</option>
+                        <option value="machineLearning">Машинное обучение</option>
                     </select>
                 </div>
 
@@ -173,10 +200,15 @@ const HistoryTab = () => {
                                 <th>MSE</th>
                                 <th>R²</th>
                             </>
-                        ) : (
+                        ) : selectedMethod === "logistic" ? (
                             <>
                                 <th>Accuracy</th>
                                 <th>Confusion Matrix</th>
+                            </>
+                        ) : (
+                            <>
+                                <th>Параметры</th>
+                                <th>Результат</th>
                             </>
                         )}
                         <th>Файл</th>
@@ -189,21 +221,51 @@ const HistoryTab = () => {
                             <td>{item.carBrand ?? "Неизвестно"}</td>
                             <td>{item.carModel ?? "Неизвестно"}</td>
                             <td>{item.countRecords ?? "Неизвестно"}</td>
-                            <td>{item.createdAt ? new Date(item.createdAt).toLocaleString() : "Неизвестно"}</td>
+                            <td>
+                                {item.createdAt
+                                    ? new Date(item.createdAt).toLocaleString()
+                                    : item.created
+                                        ? new Date(item.created).toLocaleString()
+                                        : "Неизвестно"}
+                            </td>
                             {selectedMethod === "linear" ? (
                                 <>
                                     <td>{item.mse ?? "—"}</td>
                                     <td>{item.rsquared ?? "—"}</td>
                                 </>
-                            ) : (
+                            ) : selectedMethod === "logistic" ? (
                                 <>
                                     <td>{item.accuracy?.toFixed(4) ?? "—"}</td>
                                     <td>{item.confusionMatrix ?? "—"}</td>
                                 </>
+                            ) : (
+                                <>
+                                    <td>
+                                        {item.type === "future"
+                                            ? `Год: ${item.futureYear}, ${item.futureEngineVolume}л, ${item.futureTransmission}`
+                                            : `Эпох: ${item.epochs}, batch: ${item.batchSize}`}
+                                    </td>
+                                    <td>
+                                            <pre style={{ whiteSpace: "pre-wrap", maxWidth: 300 }}>
+                                                {item.analysisResult?.toString().slice(0, 200) + "..."}
+                                            </pre>
+                                    </td>
+                                </>
                             )}
                             <td>{item.fileAnalyzed ?? "—"}</td>
                             <td>
-                                <button className="btn btn-info btn-sm" onClick={() => handleDownload(item)}>
+                                <button
+                                    className="btn btn-info btn-sm"
+                                    onClick={() =>
+                                        handleDownload({
+                                            imgBase64:
+                                                item.imgBase64 ??
+                                                (item.type === "future"
+                                                    ? item.priceDistributionPlot
+                                                    : item.epochTrainingPlot),
+                                        })
+                                    }
+                                >
                                     Скачать
                                 </button>
                             </td>
