@@ -22,7 +22,7 @@ const Contact = () => {
             const userId = currentUser.id;
 
             const response = await axios.post(
-                `http://localhost:8080/api/tickets?userId=${userId}`,
+                `http://localhost:8089/api/tickets?userId=${userId}`,
                 { title, description },
                 {
                     headers: {

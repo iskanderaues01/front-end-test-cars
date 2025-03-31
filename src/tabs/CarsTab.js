@@ -27,7 +27,7 @@ const CarsTab = ({ handleSetAnalysisFile }) => {
         try {
             const tokenData = JSON.parse(localStorage.getItem("user"));
             const token = tokenData?.token;
-            const response = await axios.get("http://localhost:8080/api/cars/list-parser", {
+            const response = await axios.get("http://localhost:8089/api/cars/list-parser", {
                 headers: { Authorization: `Bearer ${token}` },
             });
 
@@ -117,7 +117,7 @@ const CarsTab = ({ handleSetAnalysisFile }) => {
         try {
             const tokenData = JSON.parse(localStorage.getItem("user"));
             const token = tokenData?.token;
-            const response = await axios.get(`http://localhost:8080/api/cars/download-car-info/${fileName}`, {
+            const response = await axios.get(`http://localhost:8089/api/cars/download-car-info/${fileName}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             setFileDetails(response.data);

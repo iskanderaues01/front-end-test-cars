@@ -17,13 +17,13 @@ const HistoryTab = () => {
             let data = [];
 
             if (method === "linear") {
-                const res = await axios.get(`http://localhost:8080/api/analysis-history/user/${userId}`, {
+                const res = await axios.get(`http://localhost:8089/api/analysis-history/user/${userId}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 data = res.data;
 
             } else if (method === "logistic") {
-                const res = await axios.get(`http://localhost:8080/api/logistic-analysis/history?userId=${userId}`, {
+                const res = await axios.get(`http://localhost:8089/api/logistic-analysis/history?userId=${userId}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 data = res.data.map(item => ({
@@ -35,10 +35,10 @@ const HistoryTab = () => {
 
             } else if (method === "machineLearning") {
                 const [futureRes, epochRes] = await Promise.all([
-                    axios.get(`http://localhost:8080/api/history/future-price?userId=${userId}`, {
+                    axios.get(`http://localhost:8089/api/history/future-price?userId=${userId}`, {
                         headers: { Authorization: `Bearer ${token}` },
                     }),
-                    axios.get(`http://localhost:8080/api/history/epochs?userId=${userId}`, {
+                    axios.get(`http://localhost:8089/api/history/epochs?userId=${userId}`, {
                         headers: { Authorization: `Bearer ${token}` },
                     }),
                 ]);

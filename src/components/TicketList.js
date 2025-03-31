@@ -24,7 +24,7 @@ const TicketList = () => {
             const token = currentUser.token;
             const userIdParam = isAdmin ? "" : `?userId=${currentUser.id}`;
 
-            const response = await axios.get(`http://localhost:8080/api/tickets${userIdParam}`, {
+            const response = await axios.get(`http://localhost:8089/api/tickets${userIdParam}`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
@@ -37,7 +37,7 @@ const TicketList = () => {
 
     const handleDelete = async (ticketId) => {
         try {
-            await axios.delete(`http://localhost:8080/api/tickets/${ticketId}`, {
+            await axios.delete(`http://localhost:8089/api/tickets/${ticketId}`, {
                 headers: {
                     Authorization: `Bearer ${currentUser.token}`,
                 },
@@ -51,7 +51,7 @@ const TicketList = () => {
     const handleStatusChange = async (ticketId, status) => {
         try {
             await axios.put(
-                `http://localhost:8080/api/tickets/${ticketId}/status?status=${status}`,
+                `http://localhost:8089/api/tickets/${ticketId}/status?status=${status}`,
                 {},
                 {
                     headers: {
@@ -74,7 +74,7 @@ const TicketList = () => {
     const saveEdit = async (ticketId) => {
         try {
             await axios.put(
-                `http://localhost:8080/api/tickets/${ticketId}`,
+                `http://localhost:8089/api/tickets/${ticketId}`,
                 { title: editedTitle, description: editedDescription },
                 {
                     headers: {

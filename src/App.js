@@ -15,6 +15,7 @@ import BoardAdmin from "./components/BoardAdmin";
 import Statistic from "./components/Statistic";
 import Contact from "./components/Contact";
 import TicketList from "./components/TicketList";
+import About from "./components/About";
 
 
 import { logout } from "./actions/auth";
@@ -171,6 +172,7 @@ const App = () => {
                   <Route path="/user" element={<BoardUser/>}/>
                   <Route path="/contact" element={<Contact />} />
                   <Route path="/ticket" element={<TicketList />} />
+                  <Route path="/about" element={<About />} />
                 </Routes>
               </div>
           )}

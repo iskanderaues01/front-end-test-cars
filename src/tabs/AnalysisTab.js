@@ -33,7 +33,7 @@ const AnalysisTab = ({ analysisFile }) => {
             setImageLoading(true);
             const tokenData = JSON.parse(localStorage.getItem("user"));
             const token = tokenData?.token;
-            const response = await axios.get("http://localhost:8080/api/cars/get-car-image", {
+            const response = await axios.get("http://localhost:8089/api/cars/get-car-image", {
                 params: { fileName: analysisFile.fileName },
                 headers: { Authorization: `Bearer ${token}` },
             });
@@ -70,7 +70,7 @@ const AnalysisTab = ({ analysisFile }) => {
                     return;
                 }
 
-                response = await axios.get("http://localhost:8080/api/future-price-analysis", {
+                response = await axios.get("http://localhost:8089/api/future-price-analysis", {
                     headers: { Authorization: `Bearer ${token}` },
                     params: {
                         filename: analysisFile.fileName,
@@ -89,7 +89,7 @@ const AnalysisTab = ({ analysisFile }) => {
                     return;
                 }
 
-                response = await axios.get("http://localhost:8080/api/epochs-analysis", {
+                response = await axios.get("http://localhost:8089/api/epochs-analysis", {
                     headers: { Authorization: `Bearer ${token}` },
                     params: {
                         filename: analysisFile.fileName,
@@ -134,7 +134,7 @@ const AnalysisTab = ({ analysisFile }) => {
                     alert("Укажите порог цены для логистической регрессии.");
                     return;
                 }
-                response = await axios.get("http://localhost:8080/api/logistic-analysis/perform-logic", {
+                response = await axios.get("http://localhost:8089/api/logistic-analysis/perform-logic", {
                     headers: { Authorization: `Bearer ${token}` },
                     params: {
                         filename: analysisFile.fileName,
@@ -148,7 +148,7 @@ const AnalysisTab = ({ analysisFile }) => {
                     alert("Для линейной регрессии выберите признак для анализа.");
                     return;
                 }
-                response = await axios.get("http://localhost:8080/api/perform-analysis", {
+                response = await axios.get("http://localhost:8089/api/perform-analysis", {
                     headers: { Authorization: `Bearer ${token}` },
                     params: {
                         analysisType: analysisParam,
@@ -157,7 +157,7 @@ const AnalysisTab = ({ analysisFile }) => {
                 });
             } else if (analysisMethod === "machine_learning") {
                 if (analysisParam === "future_price") {
-                    response = await axios.get("http://localhost:8080/api/future-price-analysis", {
+                    response = await axios.get("http://localhost:8089/api/future-price-analysis", {
                         headers: { Authorization: `Bearer ${token}` },
                         params: {
                             filename: analysisFile.fileName,
@@ -171,7 +171,7 @@ const AnalysisTab = ({ analysisFile }) => {
                         },
                     });
                 } else if (analysisParam === "epoch_analysis") {
-                    response = await axios.get("http://localhost:8080/api/epochs-analysis", {
+                    response = await axios.get("http://localhost:8089/api/epochs-analysis", {
                         headers: { Authorization: `Bearer ${token}` },
                         params: {
                             filename: analysisFile.fileName,
@@ -214,7 +214,7 @@ const AnalysisTab = ({ analysisFile }) => {
             if (analysisMethod === "linear_regression" && analysisParam) {
                 finalAnalysisType = analysisParam;
             }
-            const response = await axios.get("http://localhost:8080/api/perform-analysis", {
+            const response = await axios.get("http://localhost:8089/api/perform-analysis", {
                 headers: { Authorization: `Bearer ${token}` },
                 params: {
                     analysisType: finalAnalysisType,
@@ -432,7 +432,7 @@ const AnalysisTab = ({ analysisFile }) => {
                 dummyFeatures: analysisResult?.DummyFeatures ? JSON.stringify(analysisResult.DummyFeatures) : null
             };
 
-            await axios.post(`http://localhost:8080/api/analysis-history/save-leaner?userId=${userId}`, requestBody, {
+            await axios.post(`http://localhost:8089/api/analysis-history/save-leaner?userId=${userId}`, requestBody, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
@@ -457,7 +457,7 @@ const AnalysisTab = ({ analysisFile }) => {
             const token = tokenData?.token;
 
             const response = await axios.get(
-                `http://localhost:8080/api/cars/download-car-info/${fileName}`,
+                `http://localhost:8089/api/cars/download-car-info/${fileName}`,
                 {
                     headers: {
                         Authorization: `Bearer ${token}`,

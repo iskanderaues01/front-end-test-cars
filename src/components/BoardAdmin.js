@@ -21,7 +21,7 @@ const BoardAdmin = () => {
         const tokenData = JSON.parse(localStorage.getItem("user"));
         const token = tokenData?.token;
         const response = await axios.get(
-            `http://localhost:8080/api/cars/get-file/${fileName}`,
+            `http://localhost:8089/api/cars/get-file/${fileName}`,
             {
               headers: {
                 Authorization: `Bearer ${token}`,
@@ -45,7 +45,7 @@ const BoardAdmin = () => {
       const tokenData = JSON.parse(localStorage.getItem("user"));
       const token = tokenData?.token;
       const response = await axios.get(
-          "http://localhost:8080/api/cars/list-parser",
+          "http://localhost:8089/api/cars/list-parser",
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -70,7 +70,7 @@ const BoardAdmin = () => {
         const tokenData = JSON.parse(localStorage.getItem("user"));
         const token = tokenData?.token;
         const response = await axios.delete(
-            `http://localhost:8080/api/cars/delete-file/${fileName}`,
+            `http://localhost:8089/api/cars/delete-file/${fileName}`,
             {
               headers: {
                 Authorization: `Bearer ${token}`,
@@ -93,7 +93,7 @@ const BoardAdmin = () => {
       const tokenData = JSON.parse(localStorage.getItem("user"));
       const token = tokenData?.token;
       const response = await axios.get(
-          `http://localhost:8080/api/cars/download-car-info/${fileName}`,
+          `http://localhost:8089/api/cars/download-car-info/${fileName}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -157,8 +157,8 @@ const BoardAdmin = () => {
 
       // Определяем URL запроса
       const url = formData.saveToDb
-          ? "http://localhost:8080/api/cars/save-car-data"
-          : "http://localhost:8080/api/cars/data-car-date";
+          ? "http://localhost:8089/api/cars/save-car-data"
+          : "http://localhost:8089/api/cars/data-car-date";
 
       // Отправляем GET-запрос на нужный URL
       const response = await axios.get(url, {
@@ -221,7 +221,40 @@ const BoardAdmin = () => {
 
         {/* Основное содержимое */}
         <div className="col-10 p-4">
-          {activeTab === "home" && <h1>Добро пожаловать в панель администратора!</h1>}
+        {activeTab === "home" && (
+            <div className="container mt-4">
+                <div className="row align-items-center">
+                    <div className="col-md-6 mb-4">
+                        <h2 className="mb-3">Добро пожаловать в панель администратора!</h2>
+                        <p className="lead">
+                            Здесь вы можете управлять данными об автомобилях, запускать парсинг с внешних источников и
+                            добавлять новую информацию для анализа и прогнозов.
+                        </p>
+                        <ul className="list-group mb-4">
+                            <li className="list-group-item">
+                                <strong>📁 Управление файлами:</strong> просматривайте, скачивайте и удаляйте загруженные JSON-файлы с объявлениями.
+                            </li>
+                            <li className="list-group-item">
+                                <strong>🌐 Парсинг:</strong> запускайте автоматический сбор объявлений по заданным марке, модели и диапазону лет.
+                            </li>
+                            <li className="list-group-item">
+                                <strong>➕ Добавление данных:</strong> вручную загружайте новые файлы или создавайте их через встроенную форму.
+                            </li>
+                            <li className="list-group-item">
+                                <strong>📊 Анализ:</strong> переходите во вкладку анализа для запуска ML/регрессионных алгоритмов по выбранным данным.
+                            </li>
+                        </ul>
+                    </div>
+                    <div className="col-md-6 text-center">
+                        <img
+                            src="https://i.ibb.co.com/chw0PhfF/image.png"
+                            alt="Админ-панель"
+                            className="img-fluid rounded shadow"
+                        />
+                    </div>
+                </div>
+            </div>
+        )}
 
           {activeTab === "cars" && (
               <div>
