@@ -138,7 +138,7 @@ const AnalysisTab = ({ analysisFile }) => {
                     headers: { Authorization: `Bearer ${token}` },
                     params: {
                         filename: analysisFile.fileName,
-                        priceThreshold: 1000000,
+                        priceThreshold: priceThreshold,
                         userId: userId,
                         save: true,
                     },
