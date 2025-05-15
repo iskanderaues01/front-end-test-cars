@@ -160,7 +160,6 @@ const HistoryTab = () => {
                         value={brandFilter}
                         onChange={(e) => setBrandFilter(e.target.value)}
                         placeholder="Например: Nissan"
-                        disabled={selectedMethod === "logistic"}
                     />
                 </div>
 
@@ -191,94 +190,87 @@ const HistoryTab = () => {
             ) : (
                 <table className="table table-bordered table-striped">
                     <thead>
-                        <tr>
-                            {selectedMethod !== "logistic" && (
-                                <>
-                                    <th>Марка авто</th>
-                                    <th>Модель авто</th>
-                                </>
-                            )}
-                            <th>Количество записей</th>
-                            <th>Дата анализа</th>
+                    <tr>
+                        <th>Марка авто</th>
+                        <th>Модель авто</th>
+                        <th>Количество записей</th>
+                        <th>Дата анализа</th>
+                        {selectedMethod === "linear" ? (
+                            <>
+                                <th>MSE</th>
+                                <th>R²</th>
+                            </>
+                        ) : selectedMethod === "logistic" ? (
+                            <>
+                                <th>Accuracy</th>
+                                <th>Confusion Matrix</th>
+                            </>
+                        ) : (
+                            <>
+                                <th>Параметры</th>
+                                <th>Результат</th>
+                            </>
+                        )}
+                        <th>Файл</th>
+                        <th>Операции</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {filteredHistory.map((item) => (
+                        <tr key={item.id}>
+                            <td>{item.carBrand ?? "Неизвестно"}</td>
+                            <td>{item.carModel ?? "Неизвестно"}</td>
+                            <td>{item.countRecords ?? "Неизвестно"}</td>
+                            <td>
+                                {item.createdAt
+                                    ? new Date(item.createdAt).toLocaleString()
+                                    : item.created
+                                        ? new Date(item.created).toLocaleString()
+                                        : "Неизвестно"}
+                            </td>
                             {selectedMethod === "linear" ? (
                                 <>
-                                    <th>MSE</th>
-                                    <th>R²</th>
+                                    <td>{item.mse ?? "—"}</td>
+                                    <td>{item.rsquared ?? "—"}</td>
                                 </>
                             ) : selectedMethod === "logistic" ? (
                                 <>
-                                    <th>Accuracy</th>
-                                    <th>Confusion Matrix</th>
+                                    <td>{item.accuracy?.toFixed(4) ?? "—"}</td>
+                                    <td>{item.confusionMatrix ?? "—"}</td>
                                 </>
                             ) : (
                                 <>
-                                    <th>Параметры</th>
-                                    <th>Результат</th>
-                                </>
-                            )}
-                            <th>Файл</th>
-                            <th>Операции</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {filteredHistory.map((item) => (
-                            <tr key={item.id}>
-                                {selectedMethod !== "logistic" && (
-                                    <>
-                                        <td>{item.carBrand ?? "Неизвестно"}</td>
-                                        <td>{item.carModel ?? "Неизвестно"}</td>
-                                    </>
-                                )}
-                                <td>{item.countRecords ?? "Неизвестно"}</td>
-                                <td>{
-                                    item.createdAt
-                                        ? new Date(item.createdAt).toLocaleString()
-                                        : item.created
-                                            ? new Date(item.created).toLocaleString()
-                                            : "Неизвестно"
-                                }</td>
-                                {selectedMethod === "linear" ? (
-                                    <>
-                                        <td>{item.mse ?? "—"}</td>
-                                        <td>{item.rsquared ?? "—"}</td>
-                                    </>
-                                ) : selectedMethod === "logistic" ? (
-                                    <>
-                                        <td>{item.accuracy?.toFixed(4) ?? "—"}</td>
-                                        <td>{item.confusionMatrix ?? "—"}</td>
-                                    </>
-                                ) : (
-                                    <>
-                                        <td>
-                                            {item.type === "future"
-                                                ? `Год: ${item.futureYear}, ${item.futureEngineVolume}л, ${item.futureTransmission}`
-                                                : `Эпох: ${item.epochs}, batch: ${item.batchSize}`
-                                            }
-                                        </td>
-                                        <td>
+                                    <td>
+                                        {item.type === "future"
+                                            ? `Год: ${item.futureYear}, ${item.futureEngineVolume}л, ${item.futureTransmission}`
+                                            : `Эпох: ${item.epochs}, batch: ${item.batchSize}`}
+                                    </td>
+                                    <td>
                                             <pre style={{ whiteSpace: "pre-wrap", maxWidth: 300 }}>
                                                 {item.analysisResult?.toString().slice(0, 200) + "..."}
                                             </pre>
-                                        </td>
-                                    </>
-                                )}
-                                <td>{item.fileAnalyzed ?? "—"}</td>
-                                <td>
-                                    <button
-                                        className="btn btn-info btn-sm"
-                                        onClick={() => handleDownload({
+                                    </td>
+                                </>
+                            )}
+                            <td>{item.fileAnalyzed ?? "—"}</td>
+                            <td>
+                                <button
+                                    className="btn btn-info btn-sm"
+                                    onClick={() =>
+                                        handleDownload({
                                             imgBase64:
                                                 item.imgBase64 ??
                                                 (item.type === "future"
                                                     ? item.priceDistributionPlot
                                                     : item.epochTrainingPlot),
-                                        })}
-                                    >
-                                        Скачать
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
+                                        })
+                                    }
+                                >
+                                    Скачать
+                                </button>
+                            </td>
+                        </tr>
+                    ))}
                     </tbody>
                 </table>
             )}

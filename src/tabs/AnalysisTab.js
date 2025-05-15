@@ -871,7 +871,7 @@ const AnalysisTab = ({ analysisFile }) => {
 
                     <div className="mt-3">
                         <button className="btn btn-primary mr-2" onClick={handleExportExcel}>
-                            Экспорт в Excel
+                            Экспорт анализ в Excel
                         </button>
                         <button
                             className="btn btn-success mr-2"
@@ -887,7 +887,7 @@ const AnalysisTab = ({ analysisFile }) => {
                         </button>
 
                         <button className="btn btn-info" onClick={handleDownloadAnalyzedFile}>
-                            Скачать анализ в Excel
+                            Скачать данные в Excel
                         </button>
                     </div>
                 </div>

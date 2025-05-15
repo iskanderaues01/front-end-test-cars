@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { useSelector } from "react-redux";
 
 const BoardAdmin = () => {
   const [activeTab, setActiveTab] = useState("home");
@@ -11,6 +12,98 @@ const BoardAdmin = () => {
 
   const [expandedFile, setExpandedFile] = useState(null);
   const [fileDetails, setFileDetails] = useState([]);
+
+  const [userList, setUserList] = useState([]);
+  const [selectedUser, setSelectedUser] = useState(null); // Для модалки
+  const [userModalVisible, setUserModalVisible] = useState(false);
+  const { user: currentUser } = useSelector((state) => state.auth);
+
+  const fetchUserList = async () => {
+    try {
+      const tokenData = JSON.parse(localStorage.getItem("user"));
+      const token = tokenData?.token;
+      const response = await axios.get("http://localhost:8089/api/admin/users", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setUserList(response.data);
+    } catch (error) {
+      console.error("Ошибка загрузки пользователей:", error);
+    }
+  };
+
+  const translateStatus = (status) => {
+    switch (status) {
+      case "ACTIVE":
+        return "Активный";
+      case "BLOCKED":
+        return "Заблокированный";
+      case "DISABLED":
+        return "Отключённый";
+      default:
+        return status;
+    }
+  };
+
+  const translateRole = (role) => {
+    switch (role) {
+      case "ROLE_USER":
+        return "Пользователь";
+      case "ROLE_ADMIN":
+        return "Администратор";
+      case "ROLE_MODERATOR":
+        return "Модератор";
+      default:
+        return role;
+    }
+  };
+
+  const changeUserStatus = async (username, status) => {
+    try {
+      const tokenData = JSON.parse(localStorage.getItem("user"));
+      const token = tokenData?.token;
+      await axios.post(
+          "http://localhost:8089/api/admin/users/change-status",
+          { username, status },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+      );
+      alert(`Статус пользователя ${username} изменён на ${status}.`);
+      fetchUserList(); // Перезагрузить список
+    } catch (error) {
+      console.error("Ошибка смены статуса:", error);
+      alert("Ошибка смены статуса пользователя.");
+    }
+  };
+
+  const openUserDetails = async (username) => {
+    try {
+      const tokenData = JSON.parse(localStorage.getItem("user"));
+      const token = tokenData?.token;
+      const response = await axios.get(`http://localhost:8089/api/admin/users/${username}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setSelectedUser(response.data);
+      setUserModalVisible(true);
+    } catch (error) {
+      console.error("Ошибка загрузки пользователя:", error);
+      alert("Ошибка при получении информации о пользователе.");
+    }
+  };
+
+  const resetUserPassword = async (username) => {
+    try {
+      const tokenData = JSON.parse(localStorage.getItem("user"));
+      const token = tokenData?.token;
+      await axios.post(`http://localhost:8089/api/admin/users/reset-password/${username}`, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      alert(`Пароль пользователя ${username} был успешно сброшен.`);
+    } catch (error) {
+      console.error("Ошибка сброса пароля:", error);
+      alert("Ошибка при сбросе пароля.");
+    }
+  };
 
 
   const fetchFileDetails = async (fileName) => {
@@ -186,6 +279,8 @@ const BoardAdmin = () => {
     setActiveTab(tab);
     if (tab === "cars") {
       fetchCarList();
+    } else if (tab === "users") {
+      fetchUserList();
     }
   };
 
@@ -216,39 +311,49 @@ const BoardAdmin = () => {
             >
               <span className="nav-link curs-pointer">Добавить данные о машинах</span>
             </li>
+            <li
+                className={`nav-item p-2 ${activeTab === "users" ? "bg-primary text-white" : ""}`}
+                onClick={() => handleTabChange("users")}
+            >
+              <span className="nav-link curs-pointer">Управление пользователями</span>
+            </li>
           </ul>
         </div>
 
         {/* Основное содержимое */}
         <div className="col-10 p-4">
-        {activeTab === "home" && (
-            <div className="container mt-4">
+          {activeTab === "home" && (
+              <div className="container mt-4">
                 <div className="row align-items-center">
-                    <div className="col-md-6 mb-4">
-                        <h2 className="mb-3">Добро пожаловать в панель администратора!</h2>
+                  <div className="col-md-6 mb-4">
+                    <h2 className="mb-3">Добро пожаловать в панель администратора!</h2>
                         <p className="lead">
                             Здесь вы можете управлять данными об автомобилях, запускать парсинг с внешних источников и
                             добавлять новую информацию для анализа и прогнозов.
                         </p>
-                        <ul className="list-group mb-4">
-                            <li className="list-group-item">
-                                <strong>📁 Управление файлами:</strong> просматривайте, скачивайте и удаляйте загруженные JSON-файлы с объявлениями.
-                            </li>
-                            <li className="list-group-item">
-                                <strong>🌐 Парсинг:</strong> запускайте автоматический сбор объявлений по заданным марке, модели и диапазону лет.
-                            </li>
-                            <li className="list-group-item">
-                                <strong>➕ Добавление данных:</strong> вручную загружайте новые файлы или создавайте их через встроенную форму.
-                            </li>
-                            <li className="list-group-item">
-                                <strong>📊 Анализ:</strong> переходите во вкладку анализа для запуска ML/регрессионных алгоритмов по выбранным данным.
-                            </li>
-                        </ul>
+                      <ul className="list-group mb-4">
+                        <li className="list-group-item">
+                          <strong>📁 Управление файлами:</strong> просматривайте, скачивайте и удаляйте загруженные
+                          JSON-файлы с объявлениями.
+                        </li>
+                        <li className="list-group-item">
+                          <strong>🌐 Парсинг:</strong> запускайте автоматический сбор объявлений по заданным марке,
+                          модели и диапазону лет.
+                        </li>
+                        <li className="list-group-item">
+                          <strong>➕ Добавление данных:</strong> вручную загружайте новые файлы или создавайте их через
+                          встроенную форму.
+                        </li>
+                        <li className="list-group-item">
+                          <strong>📊 Анализ:</strong> переходите во вкладку анализа для запуска ML/регрессионных
+                          алгоритмов по выбранным данным.
+                        </li>
+                      </ul>
                     </div>
-                    <div className="col-md-6 text-center">
-                        <img
-                            src="https://i.ibb.co.com/chw0PhfF/image.png"
-                            alt="Админ-панель"
+                  <div className="col-md-6 text-center">
+                    <img
+                        src="https://i.ibb.co.com/chw0PhfF/image.png"
+                        alt="Админ-панель"
                             className="img-fluid rounded shadow"
                         />
                     </div>
@@ -539,6 +644,101 @@ const BoardAdmin = () => {
                 )}
               </div>
           )}
+
+          {activeTab === "users" && (
+              <div>
+                <h2>Управление пользователями</h2>
+
+                <table className="table table-bordered table-striped mt-4">
+                  <thead>
+                  <tr>
+                    <th>Имя пользователя</th>
+                    <th>Email</th>
+                    <th>Статус</th>
+                    <th>Права</th>
+                    <th>Дата регистрации</th>
+                    <th>Действия</th>
+                  </tr>
+                  </thead>
+                  <tbody>
+                  {userList
+                      .filter(user => user.username !== currentUser.username) // исключаем себя
+                      .map((user, index) => (
+                          <tr key={index}>
+                            <td>{user.username}</td>
+                            <td>{user.email}</td>
+                            <td>{translateStatus(user.status)}</td> {/* Переводим статус */}
+                            <td>{user.roles.map((r) => translateRole(r)).join(", ")}</td> {/* Переводим роли */}
+                            <td>{new Date(user.created).toLocaleString()}</td>
+                            <td>
+                              <button
+                                  className="btn btn-success btn-sm m-1"
+                                  onClick={() => changeUserStatus(user.username, "ACTIVE")}
+                              >
+                                Активировать
+                              </button>
+                              <button
+                                  className="btn btn-warning btn-sm m-1"
+                                  onClick={() => changeUserStatus(user.username, "DISABLED")}
+                              >
+                                Отключить
+                              </button>
+                              <button
+                                  className="btn btn-danger btn-sm m-1"
+                                  onClick={() => changeUserStatus(user.username, "BLOCKED")}
+                              >
+                                Заблокировать
+                              </button>
+                              <button
+                                  className="btn btn-info btn-sm m-1"
+                                  onClick={() => openUserDetails(user.username)}
+                              >
+                                Подробнее
+                              </button>
+                            </td>
+                          </tr>
+                      ))}
+
+                  </tbody>
+                </table>
+
+                {/* Модальное окно для деталей пользователя */}
+                {userModalVisible && selectedUser && (
+                    <div className="modal show d-block" tabIndex="-1">
+                      <div className="modal-dialog">
+                        <div className="modal-content">
+                          <div className="modal-header">
+                            <h5 className="modal-title">Детали пользователя</h5>
+                            <button type="button" className="btn-close" onClick={() => setUserModalVisible(false)}></button>
+                          </div>
+                          <div className="modal-body">
+                            <p><strong>ID:</strong> {selectedUser.id}</p>
+                            <p><strong>Имя пользователя:</strong> {selectedUser.username}</p>
+                            <p><strong>Email:</strong> {selectedUser.email}</p>
+                            <p><strong>Статус:</strong> {translateStatus(selectedUser.status)}</p>
+                            <p><strong>Права:</strong> {selectedUser.roles.map((r) => translateRole(r)).join(", ")}</p>
+                            <p><strong>Дата регистрации:</strong> {new Date(selectedUser.created).toLocaleString()}</p>
+
+                            <button
+                                className="btn btn-danger mt-3"
+                                onClick={() => resetUserPassword(selectedUser.username)}
+                            >
+                              Сбросить пароль
+                            </button>
+                          </div>
+                          <div className="modal-footer">
+                            <button type="button" className="btn btn-secondary" onClick={() => setUserModalVisible(false)}>
+                              Закрыть
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                )}
+              </div>
+          )}
+
+
         </div>
       </div>
   );

@@ -72,54 +72,62 @@ const Login = (props) => {
     <div className="col-md-12">
       <div className="card card-container">
         <img
-          src="https://i.ibb.co/CByM2Kf/logog.png"
-          alt="logo-img"
-          className="logo-small-img"
+            src="https://i.ibb.co/CByM2Kf/logog.png"
+            alt="logo-img"
+            className="logo-small-img"
         />
 
         <Form onSubmit={handleLogin} ref={form}>
           <div className="form-group">
             <label htmlFor="username">Имя пользователя</label>
             <Input
-              type="text"
-              className="form-control"
-              name="username"
-              value={username}
-              onChange={onChangeUsername}
-              validations={[required]}
+                type="text"
+                className="form-control"
+                name="username"
+                value={username}
+                onChange={onChangeUsername}
+                validations={[required]}
             />
           </div>
 
           <div className="form-group">
             <label htmlFor="password">Пароль</label>
             <Input
-              type="password"
-              className="form-control"
-              name="password"
-              value={password}
-              onChange={onChangePassword}
-              validations={[required]}
+                type="password"
+                className="form-control"
+                name="password"
+                value={password}
+                onChange={onChangePassword}
+                validations={[required]}
             />
           </div>
 
           <div className="form-group">
             <button className="btn btn-primary btn-block" disabled={loading}>
               {loading && (
-                <span className="spinner-border spinner-border-sm"></span>
+                  <span className="spinner-border spinner-border-sm"></span>
               )}
               <span>Войти</span>
             </button>
           </div>
 
           {message && (
-            <div className="form-group">
-              <div className="alert alert-danger" role="alert">
-                {message}
+              <div className="form-group">
+                <div className="alert alert-danger" role="alert">
+                  {message}
+                </div>
               </div>
-            </div>
           )}
-          <CheckButton style={{ display: "none" }} ref={checkBtn} />
+          <CheckButton style={{display: "none"}} ref={checkBtn}/>
         </Form>
+        <div className="text-center mt-3">
+          <span
+              style={{textDecoration: "underline", color: "blue", cursor: "pointer"}}
+              onClick={() => navigate("/change-password")}
+          >
+            Сменить пароль
+          </span>
+        </div>
       </div>
     </div>
   );

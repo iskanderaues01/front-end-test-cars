@@ -23,6 +23,7 @@ import { clearMessage } from "./actions/message";
 
 // import AuthVerify from "./common/AuthVerify";
 import EventBus from "./common/EventBus";
+import ChangePassword from "./components/ChangePassword"; // Путь поправь, если другой
 
 const App = () => {
   const [showModeratorBoard, setShowModeratorBoard] = useState(false);
@@ -173,6 +174,7 @@ const App = () => {
                   <Route path="/contact" element={<Contact />} />
                   <Route path="/ticket" element={<TicketList />} />
                   <Route path="/about" element={<About />} />
+                  <Route path="/change-password" element={<ChangePassword />} />
                 </Routes>
               </div>
           )}

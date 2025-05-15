@@ -26,6 +26,14 @@ const register = (username, email, password, role) => {
     });
 };*/
 
+const changePassword = (username, oldPassword, newPassword) => {
+  return axios.post(API_URL + "change-password", {
+    username,
+    oldPassword,
+    newPassword,
+  });
+};
+
 const login = (username, password) => {
   return axios
       .post(API_URL + "signin", {
@@ -58,9 +66,11 @@ const login = (username, password) => {
 const logout = () => {
   localStorage.removeItem("user");
 };
-
+/// === NEW
 export default {
   register,
   login,
   logout,
+  changePassword, // <-- добавили здесь
 };
+

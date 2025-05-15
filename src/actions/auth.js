@@ -77,6 +77,8 @@ export const login = (username, password) => (dispatch) => {
   );
 };
 
+
+
 export const logout = () => (dispatch) => {
   AuthService.logout();
 
@@ -84,3 +86,33 @@ export const logout = () => (dispatch) => {
     type: LOGOUT,
   });
 };
+
+/// === NEW
+
+export const changePassword = (username, oldPassword, newPassword) => (dispatch) => {
+  return AuthService.changePassword(username, oldPassword, newPassword).then(
+      (response) => {
+        dispatch({
+          type: SET_MESSAGE,
+          payload: "Пароль успешно изменён.",
+        });
+        return Promise.resolve();
+      },
+      (error) => {
+        const message =
+            (error.response &&
+                error.response.data &&
+                error.response.data.message) ||
+            error.message ||
+            error.toString();
+
+        dispatch({
+          type: SET_MESSAGE,
+          payload: message,
+        });
+
+        return Promise.reject();
+      }
+  );
+};
+
